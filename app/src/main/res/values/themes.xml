@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base theme; Compose handles the actual colors via MaterialTheme.
+         We just need a Material3-compatible parent and edge-to-edge friendly setup. -->
+    <style name="Theme.Micreta" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/micreta_black</item>
+        <item name="android:navigationBarColor">@color/micreta_black</item>
+        <item name="android:windowBackground">@color/micreta_black</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+</resources>

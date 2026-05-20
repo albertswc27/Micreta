@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="micreta_black">#0A0C10</color>
+    <color name="micreta_surface">#13161C</color>
+    <color name="micreta_surface_high">#1B1F27</color>
+    <color name="micreta_outline">#2A2F39</color>
+    <color name="micreta_text">#E6E9EF</color>
+    <color name="micreta_text_dim">#8A93A6</color>
+    <color name="micreta_accent">#3EA7FF</color>
+    <color name="micreta_accent_soft">#7BD0A3</color>
+    <color name="micreta_warning">#F0B429</color>
+    <color name="micreta_error">#FF5C7A</color>
+</resources>

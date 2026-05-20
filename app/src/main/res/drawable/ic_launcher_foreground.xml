@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple Micreta avatar: circular body with two eyes and an antenna. -->
+    <path
+        android:pathData="M54,28C42,28 32,38 32,52V72C32,78 36,82 42,82H66C72,82 76,78 76,72V52C76,38 66,28 54,28Z"
+        android:fillColor="#3EA7FF" />
+    <path
+        android:pathData="M54,18L54,30"
+        android:strokeColor="#7BD0A3"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,16m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"
+        android:fillColor="#7BD0A3" />
+    <path
+        android:pathData="M46,52m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"
+        android:fillColor="#0A0C10" />
+    <path
+        android:pathData="M62,52m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"
+        android:fillColor="#0A0C10" />
+    <path
+        android:pathData="M48,66H60"
+        android:strokeColor="#0A0C10"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+</vector>

@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">Micreta</string>
+    <string name="default_assistant_name">Micreta</string>
+    <string name="default_car_name">Micra K13</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_driving">Modo conducción</string>
+    <string name="notification_channel_driving_desc">Notificación persistente mientras Micreta está activa.</string>
+    <string name="notification_title">Micreta está al volante</string>
+    <string name="notification_text">Modo conducción activo. Toca para abrir.</string>
+
+    <!-- States -->
+    <string name="state_sleeping">Dormida</string>
+    <string name="state_detecting">Detectando coche</string>
+    <string name="state_connected">Coche conectado</string>
+    <string name="state_listening">Escuchando</string>
+    <string name="state_navigating">Navegando</string>
+    <string name="state_alert">Alerta</string>
+    <string name="state_thinking">Pensando</string>
+    <string name="state_idle">Lista</string>
+
+    <!-- Buttons -->
+    <string name="action_activate">Activar Micreta</string>
+    <string name="action_ask_destination">Preguntar destino</string>
+    <string name="action_open_waze">Abrir Waze</string>
+    <string name="action_read_car">Leer estado del coche</string>
+    <string name="action_stop_driving">Salir del modo conducción</string>
+</resources>
