@@ -11,12 +11,17 @@ nube. Para la integración de [ruvnet/ruflo](https://github.com/ruvnet/ruflo)
 en el workflow de desarrollo ver [`RUFLO_INTEGRATION.md`](RUFLO_INTEGRATION.md).
 
 [![Descargar APK](https://img.shields.io/badge/Descargar%20APK-Micreta%20debug-2ea44f?style=for-the-badge&logo=android)](https://github.com/albertswc27/Micreta/releases/latest/download/Micreta-debug.apk)
+[![Descargar guion de pruebas](https://img.shields.io/badge/Descargar%20guion-PDF-0969da?style=for-the-badge&logo=readme)](docs/guion-pruebas-en-parado.pdf)
 
 La APK más reciente se publica en [GitHub Releases](https://github.com/albertswc27/Micreta/releases/latest).
 No necesitas conectar el móvil al portátil: abre el enlace desde Android,
 descarga `Micreta-debug.apk` y permite instalar apps desconocidas para tu
 navegador o gestor de archivos. Si prefieres instalar desde el portátil,
 también puedes usar `adb install app/build/outputs/apk/debug/app-debug.apk`.
+
+Para revisar la app con el coche parado, descarga el
+[guion de pruebas en PDF](docs/guion-pruebas-en-parado.pdf) o consulta la
+[versión editable en Markdown](docs/guion-pruebas-en-parado.md).
 
 ---
 
