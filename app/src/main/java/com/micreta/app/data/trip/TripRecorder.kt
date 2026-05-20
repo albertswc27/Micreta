@@ -90,7 +90,9 @@ class TripRecorder(
         val distanceKm = current.distanceKm
         val avgSpeed = (distanceKm * 3600 / durationSec).toInt().coerceAtLeast(0)
         val eco = computeEcoScore(current)
-        val end = locationService.lastKnown()
+        // Prefer the freshest fix, but fall back to the last point seen during
+        // the trip so we still remember where the car was parked.
+        val end = locationService.lastKnown() ?: lastPoint ?: current.startLocation
 
         val summary = TripSummary(
             id = current.id,

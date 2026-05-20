@@ -15,6 +15,9 @@ import com.micreta.app.core.logging.EventLogger
 import com.micreta.app.domain.model.GeoPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Thin wrapper around FusedLocationProviderClient.
@@ -80,6 +83,18 @@ class LocationService(private val context: Context) {
 
     /** Returns the most recent emitted GeoPoint, or null if we never received one. */
     fun lastKnown(): GeoPoint? = _location.value
+
+    /**
+     * Returns a usable fix on demand: the last known point if we have one,
+     * otherwise starts updates and waits up to [timeoutMs] for the first fix.
+     * Null when permission is missing or no fix arrives in time.
+     */
+    suspend fun awaitFix(timeoutMs: Long = 8_000L): GeoPoint? {
+        lastKnown()?.let { return it }
+        if (!hasPermission()) return null
+        startUpdates()
+        return withTimeoutOrNull(timeoutMs) { location.filterNotNull().first() }
+    }
 
     companion object {
         private const val TAG = "Location"

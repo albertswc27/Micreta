@@ -8,6 +8,7 @@ import com.micreta.app.MicretaApp
 import com.micreta.app.core.logging.EventLogger
 import com.micreta.app.core.share.ShareIntents
 import com.micreta.app.core.voice.CommandParser
+import com.micreta.app.core.voice.Earcon
 import com.micreta.app.core.voice.TranscriptSanitizer
 import com.micreta.app.data.obd.DtcDictionary
 import com.micreta.app.domain.model.CustomCommand
@@ -16,7 +17,6 @@ import com.micreta.app.domain.model.GasStationResult
 import com.micreta.app.domain.model.MicretaState
 import com.micreta.app.domain.model.VoiceCommand
 import com.micreta.app.domain.personality.MicretaPersonalityEngine
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -70,23 +70,19 @@ class VoiceCommandViewModel : ViewModel() {
         }
     }
 
-    /** Starts the listen-once flow (with the greeting question). */
+    /**
+     * Starts listening. No spoken greeting — a short "listening" earcon is
+     * faster and far less repetitive than asking "¿a dónde vamos?" every time.
+     * We still flag AwaitingDestination so a bare reply ("el gimnasio") is
+     * treated as a destination.
+     */
     fun askWhereTo() {
         if (_uiState.value is VoiceUiState.Listening) return
-        container.setState(MicretaState.THINKING)
         _pending.value = PendingTurn.AwaitingDestination
-        viewModelScope.launch {
-            // Speak the greeting and WAIT for it to finish before listening, so
-            // the recognizer never captures Micreta's own voice (self-capture
-            // fix). speakAndAwait has its own safety timeout, so a TTS failure
-            // still lets us start listening.
-            tts.speakAndAwait(personality.contextualGreeting())
-            delay(SELF_CAPTURE_GUARD_MS) // small gap for audio route teardown
-            startListening()
-        }
+        startListening()
     }
 
-    /** Starts listening without speaking first — used by the in-driving voice button. */
+    /** Starts listening without the destination context — in-driving voice button. */
     fun listenNow() {
         if (_uiState.value is VoiceUiState.Listening) return
         startListening()
@@ -118,6 +114,7 @@ class VoiceCommandViewModel : ViewModel() {
     private fun startListening() {
         _uiState.value = VoiceUiState.Listening
         container.setState(MicretaState.LISTENING)
+        Earcon.listening() // short beep: "I'm listening"
         voice.start()
     }
 
@@ -281,16 +278,13 @@ class VoiceCommandViewModel : ViewModel() {
         }
     }
 
-    /** P1 — music works from any screen; clear message if no app is configured. */
-    private suspend fun playMusic() {
-        val pkg = container.settingsRepository.settings.first().musicAppPackage
-        if (pkg.isNullOrBlank()) {
-            tts.speak("No tengo una app de música configurada. Ve a Ajustes y elige Spotify, YouTube Music u otra.")
-            container.setState(MicretaState.NEUTRAL)
-            _uiState.value = VoiceUiState.Failed("Sin app de música configurada. Configúrala en Ajustes.")
-            return
-        }
-        media.launchMusicApp(pkg)
+    /**
+     * P1 — just resume playback on whatever app holds the media session
+     * (Velune, Spotify, podcasts…). We do NOT launch any app: sending the play
+     * key resumes the user's current player, which is what they want. Works
+     * with no configured music app.
+     */
+    private fun playMusic() {
         media.play()
         tts.speak("Poniendo música.")
         container.setState(MicretaState.HAPPY)
@@ -493,8 +487,6 @@ class VoiceCommandViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "VoiceVM"
-        /** Safety gap after TTS finishes before we open the mic (audio teardown). */
-        private const val SELF_CAPTURE_GUARD_MS = 350L
 
         fun factory(@Suppress("UNUSED_PARAMETER") appContext: Context): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

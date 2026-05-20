@@ -28,31 +28,38 @@ fun TripHistoryScreen() {
     val app = MicretaApp.get()
     val trips by app.container.tripRepository.trips.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    Column(
+    // Single LazyColumn for the whole screen: avoids nesting a scrollable list
+    // inside a Column (which crashed with an "infinity max height" measurement)
+    // and makes the list scroll naturally.
+    LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Historial de viajes", style = MaterialTheme.typography.headlineMedium)
+        item {
+            Text("Historial de viajes", style = MaterialTheme.typography.headlineMedium)
+        }
         if (trips.isEmpty()) {
-            MicretaCard(title = "Sin viajes") {
-                Text(
-                    "Aún no has cerrado ningún viaje. Activa el modo conducción " +
-                    "y sal de él para que aparezca aquí.",
-                    style = MaterialTheme.typography.bodyLarge
-                )
+            item {
+                MicretaCard(title = "Sin viajes") {
+                    Text(
+                        "Aún no has cerrado ningún viaje. Activa el modo conducción " +
+                        "y sal de él para que aparezca aquí.",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
-            return@Column
-        }
-        val totalKm = trips.sumOf { it.distanceKm }
-        val avgEco = if (trips.isNotEmpty()) trips.sumOf { it.ecoScore.toLong() } / trips.size else 0L
-        MicretaCard(title = "Resumen") {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Stat("Viajes", "${trips.size}", Modifier.weight(1f))
-                Stat("Total km", "%.0f".format(totalKm), Modifier.weight(1f))
-                Stat("Eco medio", "$avgEco", Modifier.weight(1f))
+        } else {
+            item {
+                val totalKm = trips.sumOf { it.distanceKm }
+                val avgEco = trips.sumOf { it.ecoScore.toLong() } / trips.size
+                MicretaCard(title = "Resumen") {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Stat("Viajes", "${trips.size}", Modifier.weight(1f))
+                        Stat("Total km", "%.0f".format(totalKm), Modifier.weight(1f))
+                        Stat("Eco medio", "$avgEco", Modifier.weight(1f))
+                    }
+                }
             }
-        }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(trips) { trip -> TripRow(trip) }
         }
     }
