@@ -102,6 +102,9 @@ fun SettingsScreen(
             ToggleRow("Activar al conectar Bluetooth del coche", settings.activateOnBluetooth) {
                 scope.launch { app.container.settingsRepository.setActivateOnBluetooth(it) }
             }
+            ToggleRow("Ofrecer voz al conectar el coche", settings.autoListenOnCarBluetooth) {
+                scope.launch { app.container.settingsRepository.setAutoListenOnCarBluetooth(it) }
+            }
             ToggleRow("Activar al conectar el cargador", settings.activateOnCharging) {
                 scope.launch { app.container.settingsRepository.setActivateOnCharging(it) }
             }

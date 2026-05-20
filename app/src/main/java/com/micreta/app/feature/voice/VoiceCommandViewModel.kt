@@ -8,11 +8,15 @@ import com.micreta.app.MicretaApp
 import com.micreta.app.core.logging.EventLogger
 import com.micreta.app.core.share.ShareIntents
 import com.micreta.app.core.voice.CommandParser
+import com.micreta.app.core.voice.TranscriptSanitizer
 import com.micreta.app.data.obd.DtcDictionary
 import com.micreta.app.domain.model.CustomCommand
+import com.micreta.app.domain.model.GasStationOption
+import com.micreta.app.domain.model.GasStationResult
 import com.micreta.app.domain.model.MicretaState
 import com.micreta.app.domain.model.VoiceCommand
 import com.micreta.app.domain.personality.MicretaPersonalityEngine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -70,9 +74,16 @@ class VoiceCommandViewModel : ViewModel() {
     fun askWhereTo() {
         if (_uiState.value is VoiceUiState.Listening) return
         container.setState(MicretaState.THINKING)
-        tts.speak(personality.contextualGreeting())
         _pending.value = PendingTurn.AwaitingDestination
-        startListening()
+        viewModelScope.launch {
+            // Speak the greeting and WAIT for it to finish before listening, so
+            // the recognizer never captures Micreta's own voice (self-capture
+            // fix). speakAndAwait has its own safety timeout, so a TTS failure
+            // still lets us start listening.
+            tts.speakAndAwait(personality.contextualGreeting())
+            delay(SELF_CAPTURE_GUARD_MS) // small gap for audio route teardown
+            startListening()
+        }
     }
 
     /** Starts listening without speaking first — used by the in-driving voice button. */
@@ -111,23 +122,18 @@ class VoiceCommandViewModel : ViewModel() {
     }
 
     private fun onTranscript(text: String) {
-        EventLogger.info(TAG, "Heard: \"$text\"")
+        // Strip any of Micreta's own prompt that the recognizer captured.
+        val clean = TranscriptSanitizer.clean(text, personality.ownerName)
+        EventLogger.info(TAG, "Heard raw=\"$text\" clean=\"$clean\"")
         container.setState(MicretaState.THINKING)
         viewModelScope.launch {
-            // Multi-turn shortcut: if we asked for a destination just before,
-            // try to parse a bare destination first.
-            if (_pending.value == PendingTurn.AwaitingDestination) {
-                val dest = CommandParser.parseDestinationOnly(text)
-                _pending.value = PendingTurn.None
-                if (!dest.isNullOrBlank()) {
-                    val cmd = VoiceCommand.NavigateTo(dest, text)
-                    _uiState.value = VoiceUiState.Heard(text, cmd)
-                    execute(cmd)
-                    return@launch
-                }
-            }
+            val wasAwaitingDestination = _pending.value == PendingTurn.AwaitingDestination
+            _pending.value = PendingTurn.None
             val custom = container.customCommandsRepository.commands.first()
-            val command = CommandParser.parse(text, custom)
+            // Always parse first; only fall back to a bare destination when the
+            // parse is Unknown AND we were awaiting one. So "pon música" runs
+            // PlayMusic even right after Micreta asked "¿a dónde?".
+            val command = CommandParser.resolve(clean, custom, wasAwaitingDestination)
             _uiState.value = VoiceUiState.Heard(text, command)
             execute(command)
         }
@@ -152,13 +158,8 @@ class VoiceCommandViewModel : ViewModel() {
                 }
             }
             is VoiceCommand.EtaToContact -> sendEta(command.destination)
-            is VoiceCommand.PlayMusic -> {
-                val pkg = container.settingsRepository.settings.first().musicAppPackage
-                media.launchMusicApp(pkg); media.play()
-                tts.speak(personality.musicCommandAck(MicretaPersonalityEngine.MusicAction.PLAY))
-                container.setState(MicretaState.HAPPY)
-                _uiState.value = VoiceUiState.Done("Música.")
-            }
+            is VoiceCommand.FindCheapGasStation -> findGasStations(command)
+            is VoiceCommand.PlayMusic -> playMusic()
             is VoiceCommand.PauseMusic -> {
                 media.pause(); tts.speak(personality.musicCommandAck(MicretaPersonalityEngine.MusicAction.PAUSE))
                 container.setState(MicretaState.NEUTRAL)
@@ -273,10 +274,79 @@ class VoiceCommandViewModel : ViewModel() {
             }
             is VoiceCommand.CustomMatch -> executeCustom(command.customId)
             is VoiceCommand.Unknown -> {
-                tts.speak(personality.didNotUnderstand())
+                tts.speak("No te he entendido. Puedes decir: llévame a casa, pon música o diagnóstico.")
                 container.setState(MicretaState.NEUTRAL)
-                _uiState.value = VoiceUiState.Failed("No te he pillado.")
+                _uiState.value = VoiceUiState.Failed("No te he entendido. Prueba: \"llévame a casa\", \"pon música\" o \"diagnóstico\".")
             }
+        }
+    }
+
+    /** P1 — music works from any screen; clear message if no app is configured. */
+    private suspend fun playMusic() {
+        val pkg = container.settingsRepository.settings.first().musicAppPackage
+        if (pkg.isNullOrBlank()) {
+            tts.speak("No tengo una app de música configurada. Ve a Ajustes y elige Spotify, YouTube Music u otra.")
+            container.setState(MicretaState.NEUTRAL)
+            _uiState.value = VoiceUiState.Failed("Sin app de música configurada. Configúrala en Ajustes.")
+            return
+        }
+        media.launchMusicApp(pkg)
+        media.play()
+        tts.speak("Poniendo música.")
+        container.setState(MicretaState.HAPPY)
+        _uiState.value = VoiceUiState.Done("Poniendo música.")
+    }
+
+    // ---- P3 — gas station search ---------------------------------------
+
+    private suspend fun findGasStations(command: VoiceCommand) {
+        if (!container.locationService.hasPermission()) {
+            requestPermission(VoicePermissionRequest.LOCATION, command)
+            return
+        }
+        container.locationService.startUpdates()
+        val loc = container.locationService.lastKnown()
+        if (loc == null) {
+            tts.speak("No tengo tu ubicación todavía. Inténtalo en unos segundos.")
+            _uiState.value = VoiceUiState.Failed("Sin ubicación todavía.")
+            return
+        }
+        tts.speak("Busco gasolineras cerca.")
+        when (val result = container.gasStations.search(loc)) {
+            is GasStationResult.Options -> {
+                val n = result.options.size
+                tts.speak("He encontrado $n cerca. Toca una para ir.")
+                _uiState.value = VoiceUiState.GasStations(result.options, fallbackQuery = null)
+            }
+            is GasStationResult.FallbackSearch -> {
+                tts.speak("No tengo precios todavía. Puedo abrir Waze buscando gasolineras cercanas.")
+                _uiState.value = VoiceUiState.GasStations(emptyList(), fallbackQuery = result.query)
+            }
+        }
+        container.setState(MicretaState.NEUTRAL)
+    }
+
+    /** Called from the UI when the user picks one of the gas-station options. */
+    fun navigateToGasOption(option: GasStationOption) {
+        val started = waze.navigateToCoordinates(option.lat, option.lon, option.name)
+        if (started) {
+            tts.speak("Te llevo a ${option.name}.")
+            container.setState(MicretaState.NAVIGATING)
+            _uiState.value = VoiceUiState.Done("Abriendo Waze hacia ${option.name}.")
+        } else {
+            tts.speak("No he podido abrir Waze.")
+            _uiState.value = VoiceUiState.Failed("Waze no disponible.")
+        }
+    }
+
+    /** Called from the UI fallback button — opens a Waze nearby search. */
+    fun openWazeGasSearch(query: String = "gasolinera") {
+        val started = waze.searchNearby(query)
+        if (started) {
+            _uiState.value = VoiceUiState.Done("Buscando gasolineras en Waze.")
+        } else {
+            tts.speak("No he podido abrir Waze.")
+            _uiState.value = VoiceUiState.Failed("Waze no disponible.")
         }
     }
 
@@ -423,6 +493,8 @@ class VoiceCommandViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "VoiceVM"
+        /** Safety gap after TTS finishes before we open the mic (audio teardown). */
+        private const val SELF_CAPTURE_GUARD_MS = 350L
 
         fun factory(@Suppress("UNUSED_PARAMETER") appContext: Context): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
@@ -443,4 +515,9 @@ sealed class VoiceUiState {
     data class Heard(val text: String, val command: VoiceCommand) : VoiceUiState()
     data class Done(val summary: String) : VoiceUiState()
     data class Failed(val reason: String) : VoiceUiState()
+    /** P3 — show up to 3 gas-station options, or a Waze fallback when [options] is empty. */
+    data class GasStations(
+        val options: List<GasStationOption>,
+        val fallbackQuery: String?
+    ) : VoiceUiState()
 }

@@ -45,4 +45,37 @@ object NavigationIntentBuilder {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     }
+
+    // ---- Coordinate navigation (gas-station flow, P3) -------------------
+
+    /** Navigate straight to a lat/lon. Optional [label] is shown as the query. */
+    fun forCoordinates(lat: Double, lon: Double, label: String? = null): Intent {
+        val q = label?.takeIf { it.isNotBlank() }?.let { "&q=" + Uri.encode(it) }.orEmpty()
+        val uri = Uri.parse("waze://?ll=$lat,$lon&navigate=yes$q")
+        return Intent(Intent.ACTION_VIEW, uri).apply {
+            setPackage(WAZE_PACKAGE)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
+    fun forCoordinatesWebFallback(lat: Double, lon: Double): Intent {
+        val uri = Uri.parse("https://waze.com/ul?ll=$lat,$lon&navigate=yes")
+        return Intent(Intent.ACTION_VIEW, uri).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+    }
+
+    /** Open Waze on a *search* (no navigate=yes) so the user can pick a result. */
+    fun forNearbySearch(query: String): Intent {
+        val encoded = Uri.encode(query.trim())
+        val uri = Uri.parse("waze://?q=$encoded")
+        return Intent(Intent.ACTION_VIEW, uri).apply {
+            setPackage(WAZE_PACKAGE)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
+    fun forNearbySearchWebFallback(query: String): Intent {
+        val encoded = Uri.encode(query.trim())
+        val uri = Uri.parse("https://waze.com/ul?q=$encoded")
+        return Intent(Intent.ACTION_VIEW, uri).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+    }
 }

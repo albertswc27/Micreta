@@ -174,32 +174,39 @@ class MicretaForegroundService : LifecycleService() {
     }
 
     private fun buildNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        }
-        val pi = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
-        val stopIntent = Intent(this, MicretaForegroundService::class.java).apply {
-            action = ACTION_STOP
+        fun activityPi(requestCode: Int, route: String?): PendingIntent {
+            val i = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                if (route != null) putExtra(EXTRA_OPEN_ROUTE, route)
+            }
+            return PendingIntent.getActivity(this, requestCode, i, flags)
         }
-        val stopPi = PendingIntent.getService(
-            this, 1, stopIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
 
-        return NotificationCompat.Builder(this, MicretaApp.CHANNEL_DRIVING)
+        val contentPi = activityPi(0, null)
+        val talkPi = activityPi(2, ROUTE_VOICE)   // P2 — "Hablar" opens voice with auto-listen
+        val carPi = activityPi(3, ROUTE_STATUS)   // "Coche" opens vehicle status
+
+        val stopIntent = Intent(this, MicretaForegroundService::class.java).apply { action = ACTION_STOP }
+        val stopPi = PendingIntent.getService(this, 1, stopIntent, flags)
+
+        val builder = NotificationCompat.Builder(this, MicretaApp.CHANNEL_DRIVING)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(getString(R.string.notification_text))
             .setOngoing(true)
-            .setContentIntent(pi)
-            .addAction(0, getString(R.string.action_stop_driving), stopPi)
+            .setContentIntent(contentPi)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-            .build()
+
+        // "Hablar" only when the user opted to be offered voice on connect (P2).
+        if (autoListenOnCarBluetoothEnabled) {
+            builder.addAction(0, getString(R.string.action_talk), talkPi)
+        }
+        builder.addAction(0, getString(R.string.action_stop), stopPi)
+        builder.addAction(0, getString(R.string.action_car), carPi)
+        return builder.build()
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -220,11 +227,19 @@ class MicretaForegroundService : LifecycleService() {
     companion object {
         const val ACTION_START = "com.micreta.app.action.START_DRIVING"
         const val ACTION_STOP = "com.micreta.app.action.STOP_DRIVING"
+        /** Extra read by [MainActivity] to deep-link into a route (P2 notification actions). */
+        const val EXTRA_OPEN_ROUTE = "com.micreta.app.extra.OPEN_ROUTE"
+        const val ROUTE_VOICE = "voice"
+        const val ROUTE_STATUS = "status"
         private const val NOTIFICATION_ID = 1001
         private const val TAG = "MicretaSvc"
 
         private val _isRunning = MutableStateFlow(false)
         val isRunning: StateFlow<Boolean> = _isRunning
+
+        /** P2 — kept in sync from settings; gates the "Hablar" notification action. */
+        @Volatile
+        var autoListenOnCarBluetoothEnabled: Boolean = true
 
         fun start(context: Context) {
             val intent = Intent(context, MicretaForegroundService::class.java).apply { action = ACTION_START }

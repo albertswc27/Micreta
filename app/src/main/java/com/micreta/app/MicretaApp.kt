@@ -49,6 +49,8 @@ class MicretaApp : Application() {
                 container.tts.duckingEnabled = s.audioDuckingEnabled
                 container.speedLimitWatcher.enabled = s.speedLimitWarnEnabled
                 container.speedLimitWatcher.toleranceKmh = s.speedLimitToleranceKmh
+                com.micreta.app.service.MicretaForegroundService.autoListenOnCarBluetoothEnabled =
+                    s.autoListenOnCarBluetooth
 
                 // A03 GPS-speed activation toggle reacts live.
                 container.gpsSpeedActivation.enabled = s.activateOnGpsSpeed

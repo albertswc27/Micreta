@@ -4,6 +4,7 @@ import android.content.Context
 import com.micreta.app.core.activation.GpsSpeedActivationWatcher
 import com.micreta.app.core.bluetooth.BluetoothScanner
 import com.micreta.app.core.calendar.CalendarReader
+import com.micreta.app.core.fuel.GasStationSearchService
 import com.micreta.app.core.location.LocationService
 import com.micreta.app.core.media.MediaControllerManager
 import com.micreta.app.core.navigation.WazeNavigator
@@ -65,6 +66,7 @@ class AppContainer(context: Context) {
     val gpsSpeedActivation by lazy { GpsSpeedActivationWatcher(locationService) }
     val weatherClient by lazy { WeatherClient() }
     val calendarReader by lazy { CalendarReader(appContext) }
+    val gasStations by lazy { GasStationSearchService() }
 
     // Bluetooth / OBD
     val bluetoothScanner by lazy { BluetoothScanner(appContext) }

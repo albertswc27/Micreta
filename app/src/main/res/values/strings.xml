@@ -25,4 +25,7 @@
     <string name="action_open_waze">Abrir Waze</string>
     <string name="action_read_car">Leer estado del coche</string>
     <string name="action_stop_driving">Salir del modo conducción</string>
+    <string name="action_talk">Hablar</string>
+    <string name="action_car">Coche</string>
+    <string name="action_stop">Parar</string>
 </resources>

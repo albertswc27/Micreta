@@ -10,9 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.micreta.app.MicretaApp
 import com.micreta.app.core.permissions.PermissionsManager
+import com.micreta.app.domain.model.GasStationOption
 import com.micreta.app.domain.model.VoiceCommand
 import com.micreta.app.ui.components.MicretaAvatar
 import com.micreta.app.ui.components.MicretaCard
@@ -121,6 +126,7 @@ fun VoiceCommandScreen(
                 is VoiceUiState.Heard -> "Te he oído"
                 is VoiceUiState.Done -> "Hecho"
                 is VoiceUiState.Failed -> "Repíteme"
+                is VoiceUiState.GasStations -> "Gasolineras"
             },
             style = MaterialTheme.typography.headlineMedium
         )
@@ -145,6 +151,11 @@ fun VoiceCommandScreen(
             is VoiceUiState.Failed -> MicretaCard(title = "Error", accent = MaterialTheme.colorScheme.error) {
                 Text(s.reason, style = MaterialTheme.typography.bodyLarge)
             }
+            is VoiceUiState.GasStations -> GasStationResults(
+                options = s.options,
+                onNavigate = { vm.navigateToGasOption(it) },
+                onOpenWaze = { vm.openWazeGasSearch(s.fallbackQuery ?: "gasolinera") }
+            )
             else -> Unit
         }
         permissionError?.let { message ->
@@ -176,6 +187,49 @@ fun VoiceCommandScreen(
     }
 }
 
+@Composable
+private fun GasStationResults(
+    options: List<GasStationOption>,
+    onNavigate: (GasStationOption) -> Unit,
+    onOpenWaze: () -> Unit
+) {
+    if (options.isNotEmpty()) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            options.forEach { opt ->
+                MicretaCard(title = opt.name) {
+                    Text(
+                        text = "%.1f km".format(opt.distanceKm) + (opt.brand?.let { " · $it" } ?: ""),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = opt.priceLabel ?: "Precio no disponible",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = { onNavigate(opt) }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Navigation, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Ir")
+                    }
+                }
+            }
+        }
+    } else {
+        MicretaCard(title = "Gasolineras") {
+            Text(
+                "No tengo precios todavía. Puedo abrir Waze buscando gasolineras cercanas.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(Modifier.height(10.dp))
+            Button(onClick = onOpenWaze, modifier = Modifier.fillMaxWidth()) {
+                Text("Abrir Waze")
+            }
+        }
+    }
+}
+
 private fun describe(command: VoiceCommand): String = when (command) {
     is VoiceCommand.NavigateTo -> "Navegar a \"${command.destination}\""
     is VoiceCommand.NavigateHome -> "Navegar a casa"
@@ -183,6 +237,7 @@ private fun describe(command: VoiceCommand): String = when (command) {
     is VoiceCommand.NavigateLastParking -> "Llevarte al coche aparcado"
     is VoiceCommand.NavigateInverse -> "Ruta inversa de vuelta"
     is VoiceCommand.EtaToContact -> "Enviar ETA hacia \"${command.destination}\""
+    is VoiceCommand.FindCheapGasStation -> "Buscar gasolinera barata"
     is VoiceCommand.PlayMusic -> "Reproducir música"
     is VoiceCommand.PauseMusic -> "Pausar música"
     is VoiceCommand.ResumeMusic -> "Reanudar música"

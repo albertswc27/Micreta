@@ -31,5 +31,6 @@ data class AppSettings(
     val audioDuckingEnabled: Boolean = true,           // D06
     val resumeLastMediaOnDrive: Boolean = true,        // D03
     val tripsEnabled: Boolean = true,                  // E04/E05 master switch
-    val customCommandsEnabled: Boolean = true          // B10
+    val customCommandsEnabled: Boolean = true,         // B10
+    val autoListenOnCarBluetooth: Boolean = true       // P2 — offer voice when car BT connects
 )

@@ -16,6 +16,7 @@ sealed class VoiceCommand {
     data class NavigateLastParking(override val raw: String) : VoiceCommand()               // C09
     data class NavigateInverse(override val raw: String) : VoiceCommand()                   // C07
     data class EtaToContact(val destination: String, override val raw: String) : VoiceCommand() // C03
+    data class FindCheapGasStation(override val raw: String) : VoiceCommand()               // C08 / P3
 
     // Multimedia
     data class PlayMusic(override val raw: String) : VoiceCommand()

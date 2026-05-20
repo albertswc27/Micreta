@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,6 +40,7 @@ import com.micreta.app.feature.settings.CustomCommandsScreen
 import com.micreta.app.feature.settings.SettingsScreen
 import com.micreta.app.feature.trips.TripHistoryScreen
 import com.micreta.app.feature.voice.VoiceCommandScreen
+import com.micreta.app.service.MicretaForegroundService
 
 /**
  * Top-level navigation.
@@ -51,10 +53,24 @@ import com.micreta.app.feature.voice.VoiceCommandScreen
  * Ajustes → Más (drawer-like landing page with secondary destinations).
  */
 @Composable
-fun MicretaNavHost() {
+fun MicretaNavHost(
+    startRoute: String? = null,
+    onRouteConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Routes.HOME
+
+    // Deep-link from a notification action (P2): "voice" opens voice with
+    // auto-listen, "status" opens the vehicle status screen.
+    LaunchedEffect(startRoute) {
+        when (startRoute) {
+            MicretaForegroundService.ROUTE_VOICE -> navController.navigate(Routes.VOICE_AUTO)
+            MicretaForegroundService.ROUTE_STATUS -> navController.navigate(Routes.STATUS)
+            else -> {}
+        }
+        if (startRoute != null) onRouteConsumed()
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

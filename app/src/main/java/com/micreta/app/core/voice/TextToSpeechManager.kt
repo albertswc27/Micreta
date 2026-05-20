@@ -9,10 +9,14 @@ import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.micreta.app.core.logging.EventLogger
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Thin wrapper around Android's [TextToSpeech]. Defaults to Spanish (Spain).
@@ -45,6 +49,10 @@ class TextToSpeechManager(context: Context) {
 
     private val pending = ArrayDeque<String>()
 
+    /** utteranceId → completion, so a caller can await a specific phrase
+     *  finishing (used to coordinate TTS↔STT so Micreta never hears herself). */
+    private val awaiting = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
+
     private lateinit var tts: TextToSpeech
 
     init {
@@ -75,16 +83,19 @@ class TextToSpeechManager(context: Context) {
             override fun onDone(utteranceId: String?) {
                 _speaking.value = false
                 releaseFocus()
+                utteranceId?.let { awaiting.remove(it)?.complete(Unit) }
             }
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) {
                 _speaking.value = false
                 releaseFocus()
+                utteranceId?.let { awaiting.remove(it)?.complete(Unit) }
             }
             override fun onError(utteranceId: String?, errorCode: Int) {
                 _speaking.value = false
                 releaseFocus()
                 EventLogger.error(TAG, "TTS error=$errorCode utt=$utteranceId")
+                utteranceId?.let { awaiting.remove(it)?.complete(Unit) }
             }
         })
     }
@@ -128,6 +139,29 @@ class TextToSpeechManager(context: Context) {
         val id = UUID.randomUUID().toString()
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
         EventLogger.info(TAG, "TTS speak: \"$text\"")
+    }
+
+    /**
+     * Speaks [text] and suspends until the engine reports completion (onDone /
+     * onError), capped by [timeoutMs] so the caller never blocks forever if the
+     * engine misbehaves. Used to coordinate with the SpeechRecognizer so
+     * Micreta never starts listening while she is still talking.
+     */
+    suspend fun speakAndAwait(text: String, timeoutMs: Long = 6_000L) {
+        if (text.isBlank()) return
+        if (!_ready.value) {
+            // Engine still initializing — queue via speak() and wait a short beat.
+            speak(text)
+            delay(minOf(timeoutMs, 1_500L))
+            return
+        }
+        val id = UUID.randomUUID().toString()
+        val done = CompletableDeferred<Unit>()
+        awaiting[id] = done
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        EventLogger.info(TAG, "TTS speak (await): \"$text\"")
+        withTimeoutOrNull(timeoutMs) { done.await() }
+        awaiting.remove(id)
     }
 
     fun stop() {
