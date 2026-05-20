@@ -45,26 +45,28 @@ class TextToSpeechManager(context: Context) {
 
     private val pending = ArrayDeque<String>()
 
-    private val tts: TextToSpeech = TextToSpeech(appContext) { status ->
-        if (status == TextToSpeech.SUCCESS) {
-            val res = tts.setLanguage(Locale("es", "ES"))
-            if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
-                EventLogger.warn(TAG, "Spanish TTS not available, falling back to default.")
-                tts.setLanguage(Locale.getDefault())
-            }
-            tts.setSpeechRate(1.0f)
-            tts.setPitch(1.05f)
-            tts.setAudioAttributes(audioAttributes)
-            _ready.value = true
-            EventLogger.info(TAG, "TTS ready.")
-            // Flush pending queue
-            while (pending.isNotEmpty()) speak(pending.removeFirst())
-        } else {
-            EventLogger.error(TAG, "TTS init failed with status=$status")
-        }
-    }
+    private lateinit var tts: TextToSpeech
 
     init {
+        tts = TextToSpeech(appContext) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val res = tts.setLanguage(Locale("es", "ES"))
+                if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    EventLogger.warn(TAG, "Spanish TTS not available, falling back to default.")
+                    tts.setLanguage(Locale.getDefault())
+                }
+                tts.setSpeechRate(1.0f)
+                tts.setPitch(1.05f)
+                tts.setAudioAttributes(audioAttributes)
+                _ready.value = true
+                EventLogger.info(TAG, "TTS ready.")
+                // Flush pending queue
+                while (pending.isNotEmpty()) speak(pending.removeFirst())
+            } else {
+                EventLogger.error(TAG, "TTS init failed with status=$status")
+            }
+        }
+
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 _speaking.value = true
