@@ -10,27 +10,32 @@ import androidx.core.content.ContextCompat
  * Single source of truth for the permission groups Micreta cares about.
  *
  * Split into:
- *  - [requiredOnBoot]   : asked the first time the user opens the app
+ *  - [requiredOnBoot]   : kept intentionally empty for first-run exploration
+ *  - [optionalMicrophone] : asked when the user starts voice
+ *  - [optionalBluetooth] : asked when the user configures Bluetooth / OBD
  *  - [optionalLocation] : asked when the user toggles GPS-based features
  *  - [optionalCalendar] : asked when the user toggles the morning briefing
- *  - [optionalCall]     : asked when the user triggers SOS the first time
  *
  * Granular requests reduce drop-off — Android shows the rationale much more
  * politely when you only request what's truly needed at the moment.
  */
 object PermissionsManager {
 
-    /** Permissions required to even enter driving mode at the basic level. */
-    fun requiredOnBoot(): List<String> = buildList {
-        add(Manifest.permission.RECORD_AUDIO)
+    /** No runtime permission is required just to open and explore Micreta. */
+    fun requiredOnBoot(): List<String> = emptyList()
+
+    fun optionalMicrophone(): List<String> = listOf(Manifest.permission.RECORD_AUDIO)
+
+    fun optionalBluetooth(): List<String> = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             add(Manifest.permission.BLUETOOTH_CONNECT)
-            add(Manifest.permission.BLUETOOTH_SCAN)
         } else {
             add(Manifest.permission.BLUETOOTH)
             add(Manifest.permission.BLUETOOTH_ADMIN)
-            add(Manifest.permission.ACCESS_FINE_LOCATION)
         }
+    }
+
+    fun optionalNotifications(): List<String> = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -47,7 +52,6 @@ object PermissionsManager {
     }
 
     fun optionalCalendar(): List<String> = listOf(Manifest.permission.READ_CALENDAR)
-    fun optionalCall(): List<String> = listOf(Manifest.permission.CALL_PHONE)
     fun optionalActivityRecognition(): List<String> =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             listOf(Manifest.permission.ACTIVITY_RECOGNITION)

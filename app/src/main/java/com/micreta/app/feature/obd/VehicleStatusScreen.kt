@@ -1,5 +1,7 @@
 package com.micreta.app.feature.obd
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,14 +23,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.micreta.app.MicretaApp
+import com.micreta.app.core.permissions.PermissionsManager
 import com.micreta.app.data.obd.DtcDictionary
 import com.micreta.app.domain.model.AppSettings
 import com.micreta.app.domain.model.VehicleStatus
@@ -51,12 +58,63 @@ import kotlinx.coroutines.launch
 @Composable
 fun VehicleStatusScreen() {
     val app = MicretaApp.get()
+    val context = LocalContext.current
     val status by app.container.obd.status.collectAsStateWithLifecycle()
     val connected by app.container.obd.isConnected.collectAsStateWithLifecycle()
     val continuous by app.container.obd.isContinuous.collectAsStateWithLifecycle()
-    val source by app.container.obd.source.collectAsStateWithLifecycle()
     val settings by app.container.settingsRepository.settings.collectAsStateWithLifecycle(AppSettings())
     val scope = rememberCoroutineScope()
+    var permissionDenied by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<ObdPermissionAction?>(null) }
+
+    fun runSnapshot() {
+        scope.launch {
+            val mac = if (settings.demoMode) null else settings.obdBluetoothMac
+            app.container.obd.snapshot(mac)
+        }
+    }
+
+    fun runMonitoring() {
+        if (settings.demoMode || settings.obdBluetoothMac.isNullOrBlank())
+            app.container.obd.startMock()
+        else
+            app.container.obd.startContinuous(settings.obdBluetoothMac!!)
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val granted = result.values.all { it }
+        permissionDenied = !granted
+        if (granted) {
+            when (pendingAction) {
+                ObdPermissionAction.SNAPSHOT -> runSnapshot()
+                ObdPermissionAction.MONITOR -> runMonitoring()
+                null -> Unit
+            }
+        }
+        pendingAction = null
+    }
+
+    fun runWithBluetoothPermission(action: ObdPermissionAction) {
+        if (settings.demoMode) {
+            when (action) {
+                ObdPermissionAction.SNAPSHOT -> runSnapshot()
+                ObdPermissionAction.MONITOR -> runMonitoring()
+            }
+            return
+        }
+        val missing = PermissionsManager.missing(context, PermissionsManager.optionalBluetooth())
+        if (missing.isEmpty()) {
+            when (action) {
+                ObdPermissionAction.SNAPSHOT -> runSnapshot()
+                ObdPermissionAction.MONITOR -> runMonitoring()
+            }
+        } else {
+            pendingAction = action
+            permissionLauncher.launch(missing.toTypedArray())
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -68,6 +126,11 @@ fun VehicleStatusScreen() {
         Text("Estado del coche", style = MaterialTheme.typography.headlineMedium)
 
         SourceBanner(source = status.source, connected = connected, continuous = continuous, demoMode = settings.demoMode)
+        if (permissionDenied) {
+            MicretaCard(title = "Permiso Bluetooth", accent = MaterialTheme.colorScheme.error) {
+                Text("No puedo conectar con el adaptador OBD sin permiso Bluetooth.")
+            }
+        }
 
         MicretaCard(title = "Motor") {
             Metric("Revoluciones", status.rpm?.let { "$it rpm" })
@@ -128,23 +191,13 @@ fun VehicleStatusScreen() {
                 PrimaryActionButton(
                     label = "Lectura única",
                     icon = Icons.Filled.Refresh,
-                    onClick = {
-                        scope.launch {
-                            val mac = if (settings.demoMode) null else settings.obdBluetoothMac
-                            app.container.obd.snapshot(mac)
-                        }
-                    },
+                    onClick = { runWithBluetoothPermission(ObdPermissionAction.SNAPSHOT) },
                     modifier = Modifier.weight(1f).height(64.dp)
                 )
                 PrimaryActionButton(
                     label = "Monitorizar",
                     icon = Icons.Filled.PlayArrow,
-                    onClick = {
-                        if (settings.demoMode || settings.obdBluetoothMac.isNullOrBlank())
-                            app.container.obd.startMock()
-                        else
-                            app.container.obd.startContinuous(settings.obdBluetoothMac!!)
-                    },
+                    onClick = { runWithBluetoothPermission(ObdPermissionAction.MONITOR) },
                     enabled = settings.demoMode || !settings.obdBluetoothMac.isNullOrBlank(),
                     modifier = Modifier.weight(1f).height(64.dp),
                     container = MaterialTheme.colorScheme.surfaceVariant,
@@ -161,6 +214,8 @@ fun VehicleStatusScreen() {
         }
     }
 }
+
+private enum class ObdPermissionAction { SNAPSHOT, MONITOR }
 
 @Composable
 private fun SourceBanner(

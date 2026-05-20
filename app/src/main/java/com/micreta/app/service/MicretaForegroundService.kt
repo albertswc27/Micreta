@@ -16,6 +16,7 @@ import com.micreta.app.core.bluetooth.CarDetectionEvents
 import com.micreta.app.core.logging.EventLogger
 import com.micreta.app.domain.model.MicretaState
 import com.micreta.app.domain.personality.MicretaPersonalityEngine
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -36,6 +37,9 @@ import kotlinx.coroutines.launch
  */
 class MicretaForegroundService : LifecycleService() {
 
+    private var speedLimitEventsJob: Job? = null
+    private var motionEventsJob: Job? = null
+
     override fun onCreate() {
         super.onCreate()
         EventLogger.info(TAG, "Service onCreate.")
@@ -55,6 +59,11 @@ class MicretaForegroundService : LifecycleService() {
     }
 
     private fun startDriving() {
+        if (_isRunning.value) {
+            EventLogger.info(TAG, "Driving mode already running; ignoring duplicate start.")
+            return
+        }
+
         EventLogger.info(TAG, "Starting driving mode.")
         startForeground(NOTIFICATION_ID, buildNotification())
         _isRunning.value = true
@@ -72,7 +81,8 @@ class MicretaForegroundService : LifecycleService() {
             .onFailure { EventLogger.warn(TAG, "SpeedLimit watcher failed: ${it.message}") }
 
         // Bridge over-speed events into spoken alerts + trip counter.
-        lifecycleScope.launch {
+        speedLimitEventsJob?.cancel()
+        speedLimitEventsJob = lifecycleScope.launch {
             app.container.speedLimitWatcher.events.collect { ev ->
                 app.container.tripRecorder.registerOverSpeedEvent()
                 val phrase = app.container.personality.overSpeedWarning(ev.currentKmh, ev.limitKmh)
@@ -81,7 +91,8 @@ class MicretaForegroundService : LifecycleService() {
         }
 
         // Bridge harsh motion events into spoken reactions (J05).
-        lifecycleScope.launch {
+        motionEventsJob?.cancel()
+        motionEventsJob = lifecycleScope.launch {
             app.container.motionSensor.events.collect { ev ->
                 val reaction = if (ev.severity == com.micreta.app.core.sensors.MotionSensor.Severity.EMERGENCY) {
                     com.micreta.app.domain.personality.MicretaPersonalityEngine.Reaction.HARSH_BRAKE
@@ -125,6 +136,10 @@ class MicretaForegroundService : LifecycleService() {
     private fun stopDriving() {
         EventLogger.info(TAG, "Stopping driving mode.")
         val app = MicretaApp.get()
+        speedLimitEventsJob?.cancel()
+        speedLimitEventsJob = null
+        motionEventsJob?.cancel()
+        motionEventsJob = null
         app.container.obd.stop()
         app.container.speedLimitWatcher.stop()
         runCatching { app.container.dnd.deactivate() }
@@ -195,6 +210,10 @@ class MicretaForegroundService : LifecycleService() {
     override fun onDestroy() {
         super.onDestroy()
         EventLogger.info(TAG, "Service onDestroy.")
+        speedLimitEventsJob?.cancel()
+        speedLimitEventsJob = null
+        motionEventsJob?.cancel()
+        motionEventsJob = null
         _isRunning.value = false
     }
 

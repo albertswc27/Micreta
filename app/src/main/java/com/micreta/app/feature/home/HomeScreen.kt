@@ -110,7 +110,7 @@ fun HomeScreen(
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PrimaryActionButton(
-                    label = "Waze",
+                    label = "Destino",
                     icon = Icons.Filled.Map,
                     onClick = onOpenWaze,
                     modifier = Modifier.weight(1f),

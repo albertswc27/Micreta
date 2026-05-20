@@ -1,5 +1,7 @@
 package com.micreta.app.feature.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,10 +27,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.micreta.app.MicretaApp
 import com.micreta.app.core.bluetooth.BluetoothDeviceInfo
+import com.micreta.app.core.permissions.PermissionsManager
 import com.micreta.app.domain.model.AppSettings
 import com.micreta.app.ui.components.MicretaCard
 import kotlinx.coroutines.launch
@@ -44,13 +48,28 @@ import kotlinx.coroutines.launch
 @Composable
 fun BluetoothSetupScreen() {
     val app = MicretaApp.get()
+    val context = LocalContext.current
     val settings by app.container.settingsRepository.settings.collectAsStateWithLifecycle(AppSettings())
     val scope = rememberCoroutineScope()
     var devices by remember { mutableStateOf<List<BluetoothDeviceInfo>>(emptyList()) }
+    var permissionDenied by remember { mutableStateOf(false) }
     val bt = app.container.bluetoothScanner
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        permissionDenied = !result.values.all { it }
+        if (!permissionDenied) {
+            devices = bt.pairedDevices()
+        }
+    }
 
     LaunchedEffect(Unit) {
-        devices = bt.pairedDevices()
+        val missing = PermissionsManager.missing(context, PermissionsManager.optionalBluetooth())
+        if (missing.isEmpty()) {
+            devices = bt.pairedDevices()
+        } else {
+            permissionLauncher.launch(missing.toTypedArray())
+        }
     }
 
     Column(
@@ -61,6 +80,14 @@ fun BluetoothSetupScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Bluetooth", style = MaterialTheme.typography.headlineMedium)
+
+        if (permissionDenied) {
+            MicretaCard(
+                title = "Permiso Bluetooth",
+                accent = MaterialTheme.colorScheme.error
+            ) { Text("No puedo listar dispositivos emparejados sin permiso Bluetooth.") }
+            return@Column
+        }
 
         if (!bt.isBluetoothSupported()) {
             MicretaCard(title = "No disponible") { Text("Este dispositivo no tiene Bluetooth.") }

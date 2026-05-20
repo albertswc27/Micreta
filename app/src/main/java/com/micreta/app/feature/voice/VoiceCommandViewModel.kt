@@ -14,6 +14,8 @@ import com.micreta.app.domain.model.MicretaState
 import com.micreta.app.domain.model.VoiceCommand
 import com.micreta.app.domain.personality.MicretaPersonalityEngine
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -27,9 +29,7 @@ import kotlinx.coroutines.launch
  *
  * The view subscribes to [uiState] and [transcript] to render live state.
  */
-class VoiceCommandViewModel(
-    @Suppress("unused") appContext: Context
-) : ViewModel() {
+class VoiceCommandViewModel : ViewModel() {
 
     private val app = MicretaApp.get()
     private val container = app.container
@@ -48,6 +48,10 @@ class VoiceCommandViewModel(
      *  we resume here on the next user utterance. */
     private val _pending = MutableStateFlow<PendingTurn>(PendingTurn.None)
     val pending: StateFlow<PendingTurn> = _pending
+
+    private val _permissionRequests = MutableSharedFlow<VoicePermissionRequest>(extraBufferCapacity = 1)
+    val permissionRequests: SharedFlow<VoicePermissionRequest> = _permissionRequests
+    private var commandWaitingForPermission: VoiceCommand? = null
 
     init {
         viewModelScope.launch {
@@ -81,7 +85,23 @@ class VoiceCommandViewModel(
         voice.stop()
         _uiState.value = VoiceUiState.Idle
         _pending.value = PendingTurn.None
+        commandWaitingForPermission = null
         container.setState(MicretaState.NEUTRAL)
+    }
+
+    fun onPermissionResult(request: VoicePermissionRequest, granted: Boolean) {
+        val command = commandWaitingForPermission
+        commandWaitingForPermission = null
+        if (!granted || command == null) {
+            _uiState.value = VoiceUiState.Failed(
+                when (request) {
+                    VoicePermissionRequest.CALENDAR -> "Falta permiso de calendario."
+                    VoicePermissionRequest.LOCATION -> "Falta permiso de ubicación."
+                }
+            )
+            return
+        }
+        viewModelScope.launch { execute(command) }
     }
 
     private fun startListening() {
@@ -169,8 +189,9 @@ class VoiceCommandViewModel(
             is VoiceCommand.TripReportRequest -> speakLastTripSummary()
             is VoiceCommand.StartObdMonitoring -> {
                 val s = container.settingsRepository.settings.first()
-                if (s.demoMode || s.obdBluetoothMac.isNullOrBlank()) container.obd.startMock()
-                else container.obd.startContinuous(s.obdBluetoothMac!!)
+                val mac = s.obdBluetoothMac
+                if (s.demoMode || mac.isNullOrBlank()) container.obd.startMock()
+                else container.obd.startContinuous(mac)
                 tts.speak("Monitorizo el coche.")
                 _uiState.value = VoiceUiState.Done("OBD continuo activo.")
             }
@@ -180,6 +201,11 @@ class VoiceCommandViewModel(
                 _uiState.value = VoiceUiState.Done("OBD detenido.")
             }
             is VoiceCommand.WeatherQuery -> {
+                if (!container.locationService.hasPermission()) {
+                    requestPermission(VoicePermissionRequest.LOCATION, command)
+                    return
+                }
+                container.locationService.startUpdates()
                 val loc = container.locationService.lastKnown()
                 if (loc == null) {
                     tts.speak("No tengo tu ubicación todavía.")
@@ -198,8 +224,7 @@ class VoiceCommandViewModel(
             }
             is VoiceCommand.CalendarQuery -> {
                 if (!container.calendarReader.hasPermission()) {
-                    tts.speak("Necesito permiso para leer el calendario.")
-                    _uiState.value = VoiceUiState.Failed("Falta permiso de calendario.")
+                    requestPermission(VoicePermissionRequest.CALENDAR, command)
                     return
                 }
                 val events = container.calendarReader.upcomingEvents()
@@ -385,19 +410,32 @@ class VoiceCommandViewModel(
         _uiState.value = VoiceUiState.Done("Comando ejecutado.")
     }
 
+    private fun requestPermission(request: VoicePermissionRequest, command: VoiceCommand) {
+        commandWaitingForPermission = command
+        _permissionRequests.tryEmit(request)
+        _uiState.value = VoiceUiState.Failed(
+            when (request) {
+                VoicePermissionRequest.CALENDAR -> "Falta permiso de calendario."
+                VoicePermissionRequest.LOCATION -> "Falta permiso de ubicación."
+            }
+        )
+    }
+
     companion object {
         private const val TAG = "VoiceVM"
 
-        fun factory(appContext: Context): ViewModelProvider.Factory =
+        fun factory(@Suppress("UNUSED_PARAMETER") appContext: Context): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    VoiceCommandViewModel(appContext) as T
+                    VoiceCommandViewModel() as T
             }
     }
 }
 
 enum class PendingTurn { None, AwaitingDestination }
+
+enum class VoicePermissionRequest { CALENDAR, LOCATION }
 
 sealed class VoiceUiState {
     data object Idle : VoiceUiState()

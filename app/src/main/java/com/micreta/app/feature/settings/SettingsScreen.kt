@@ -14,6 +14,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -32,9 +34,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.micreta.app.MicretaApp
+import com.micreta.app.core.permissions.PermissionsManager
 import com.micreta.app.domain.model.AppSettings
 import com.micreta.app.domain.model.FavoritePlace
 import com.micreta.app.domain.model.PersonalityProfile
@@ -48,12 +52,24 @@ fun SettingsScreen(
     onOpenBluetoothSetup: () -> Unit,
     onOpenCustomCommands: () -> Unit,
     onOpenSystemHealth: () -> Unit,
+    onOpenDebug: () -> Unit,
     onOpenAbout: () -> Unit
 ) {
     val app = MicretaApp.get()
+    val context = LocalContext.current
     val settings by app.container.settingsRepository.settings.collectAsStateWithLifecycle(AppSettings())
     val favorites by app.container.favoritesRepository.favorites.collectAsStateWithLifecycle(emptyList())
     val scope = rememberCoroutineScope()
+    var locationPermissionDenied by remember { mutableStateOf(false) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val granted = result.values.all { it }
+        locationPermissionDenied = !granted
+        if (granted) {
+            scope.launch { app.container.settingsRepository.setActivateOnGpsSpeed(true) }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -90,7 +106,24 @@ fun SettingsScreen(
                 scope.launch { app.container.settingsRepository.setActivateOnCharging(it) }
             }
             ToggleRow("Activar por velocidad GPS (>15 km/h)", settings.activateOnGpsSpeed) {
-                scope.launch { app.container.settingsRepository.setActivateOnGpsSpeed(it) }
+                if (!it) {
+                    locationPermissionDenied = false
+                    scope.launch { app.container.settingsRepository.setActivateOnGpsSpeed(false) }
+                } else {
+                    val missing = PermissionsManager.missing(context, PermissionsManager.optionalLocation())
+                    if (missing.isEmpty()) {
+                        scope.launch { app.container.settingsRepository.setActivateOnGpsSpeed(true) }
+                    } else {
+                        locationPermissionLauncher.launch(missing.toTypedArray())
+                    }
+                }
+            }
+            if (locationPermissionDenied) {
+                Text(
+                    "Sin ubicación, la activación por velocidad GPS queda desactivada.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
             ToggleRow("Modo demo (mock OBD2)", settings.demoMode) {
                 scope.launch { app.container.settingsRepository.setDemoMode(it) }
@@ -190,6 +223,9 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp),
             container = MaterialTheme.colorScheme.surfaceVariant, content = MaterialTheme.colorScheme.onSurface)
         PrimaryActionButton("Salud del sistema", onClick = onOpenSystemHealth,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            container = MaterialTheme.colorScheme.surfaceVariant, content = MaterialTheme.colorScheme.onSurface)
+        PrimaryActionButton("Debug", onClick = onOpenDebug,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             container = MaterialTheme.colorScheme.surfaceVariant, content = MaterialTheme.colorScheme.onSurface)
         PrimaryActionButton("Acerca de Micreta", onClick = onOpenAbout,

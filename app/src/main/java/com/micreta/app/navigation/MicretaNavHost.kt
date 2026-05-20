@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
@@ -94,9 +94,7 @@ fun MicretaNavHost() {
             composable(Routes.HOME) {
                 HomeScreen(
                     onStartVoice = { navController.navigate(Routes.VOICE_AUTO) },
-                    onOpenWaze = {
-                        com.micreta.app.MicretaApp.get().container.waze.navigate("", emptyList())
-                    },
+                    onOpenWaze = { navController.navigate(Routes.VOICE_AUTO) },
                     onOpenVehicleStatus = { navController.navigate(Routes.STATUS) },
                     onOpenTrips = { navController.navigate(Routes.TRIPS) },
                     onOpenMaintenance = { navController.navigate(Routes.MAINTENANCE) },
@@ -126,6 +124,7 @@ fun MicretaNavHost() {
                     onOpenBluetoothSetup = { navController.navigate(Routes.BLUETOOTH) },
                     onOpenCustomCommands = { navController.navigate(Routes.CUSTOM_COMMANDS) },
                     onOpenSystemHealth = { navController.navigate(Routes.SYSTEM_HEALTH) },
+                    onOpenDebug = { navController.navigate(Routes.DEBUG) },
                     onOpenAbout = { navController.navigate(Routes.ABOUT) }
                 )
             }
@@ -143,6 +142,6 @@ private val bottomItems = listOf(
     BottomItem(Routes.DRIVING, "Conducción", Icons.Filled.DirectionsCar),
     BottomItem("voice?auto=false", "Voz", Icons.Filled.Mic),
     BottomItem(Routes.STATUS, "Coche", Icons.Filled.Speed),
+    BottomItem(Routes.TRIPS, "Viajes", Icons.Filled.Route),
     BottomItem(Routes.SETTINGS, "Ajustes", Icons.Filled.Settings),
-    BottomItem(Routes.DEBUG, "Debug", Icons.Filled.MoreHoriz),
 )

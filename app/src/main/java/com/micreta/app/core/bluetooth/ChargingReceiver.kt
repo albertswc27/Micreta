@@ -19,22 +19,28 @@ class ChargingReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
+        val pendingResult = goAsync()
+        val appContext = context.applicationContext
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope.launch {
-            val settings = SettingsRepository(context.applicationContext).settings.first()
-            if (!settings.activateOnCharging) {
-                EventLogger.info(TAG, "Charging event $action — feature disabled, ignoring.")
-                return@launch
-            }
-            when (action) {
-                Intent.ACTION_POWER_CONNECTED -> {
-                    EventLogger.info(TAG, "Charging connected → driving mode hint.")
-                    CarDetectionEvents.notify(CarDetectionEvents.Trigger.ChargingConnected)
+            try {
+                val settings = SettingsRepository(appContext).settings.first()
+                if (!settings.activateOnCharging) {
+                    EventLogger.info(TAG, "Charging event $action - feature disabled, ignoring.")
+                    return@launch
                 }
-                Intent.ACTION_POWER_DISCONNECTED -> {
-                    EventLogger.info(TAG, "Charging disconnected.")
-                    CarDetectionEvents.notify(CarDetectionEvents.Trigger.ChargingDisconnected)
+                when (action) {
+                    Intent.ACTION_POWER_CONNECTED -> {
+                        EventLogger.info(TAG, "Charging connected -> driving mode hint.")
+                        CarDetectionEvents.notify(CarDetectionEvents.Trigger.ChargingConnected)
+                    }
+                    Intent.ACTION_POWER_DISCONNECTED -> {
+                        EventLogger.info(TAG, "Charging disconnected.")
+                        CarDetectionEvents.notify(CarDetectionEvents.Trigger.ChargingDisconnected)
+                    }
                 }
+            } finally {
+                pendingResult.finish()
             }
         }
     }

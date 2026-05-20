@@ -1,11 +1,8 @@
 package com.micreta.app.core.safety
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.core.content.ContextCompat
 import com.micreta.app.core.logging.EventLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,11 +79,7 @@ class SosController(private val context: Context) {
     }
 
     private fun dial(phone: String) {
-        val canCall = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.CALL_PHONE
-        ) == PackageManager.PERMISSION_GRANTED
-        val action = if (canCall) Intent.ACTION_DIAL else Intent.ACTION_DIAL
-        val intent = Intent(action, Uri.parse("tel:$phone")).apply {
+        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         try {

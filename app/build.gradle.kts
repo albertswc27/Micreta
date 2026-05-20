@@ -87,4 +87,9 @@ dependencies {
 
     // Google Play Services — fused location + geofencing
     implementation("com.google.android.gms:play-services-location:21.1.0")
+
+    // Unit tests
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("app.cash.turbine:turbine:1.0.0")
 }

@@ -19,12 +19,9 @@
     <uses-permission
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
-    <uses-permission
-        android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="30" />
-    <uses-permission
-        android:name="android.permission.ACCESS_COARSE_LOCATION"
-        android:maxSdkVersion="30" />
+    <!-- NOTE: ACCESS_FINE/COARSE_LOCATION (needed for BLE scan on API <= 30)
+         are declared unconditionally below, since v0.2.0 also uses location
+         on all API levels (GPS activation, speed limit, parking memory). -->
 
     <!-- Bluetooth: API 31+ -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -47,9 +44,8 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
 
-    <!-- Productivity (v0.2.0): calendar summary, SOS, ETA-by-intent (no SEND_SMS) -->
+    <!-- Productivity (v0.2.0): calendar summary, SOS via ACTION_DIAL, ETA-by-intent (no SEND_SMS) -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>
@@ -106,7 +102,7 @@
         <receiver
             android:name=".core.bluetooth.BluetoothCarReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />

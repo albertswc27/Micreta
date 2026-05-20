@@ -30,37 +30,49 @@ class BluetoothCarReceiver : BroadcastReceiver() {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
         }
-        val address = device?.address ?: return
+        val bluetoothDevice = device ?: return
+        val address = try {
+            bluetoothDevice.address
+        } catch (se: SecurityException) {
+            EventLogger.warn(TAG, "Bluetooth address permission missing: ${se.message}")
+            null
+        } ?: return
 
+        val pendingResult = goAsync()
+        val appContext = context.applicationContext
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope.launch {
-            val settings = SettingsRepository(context.applicationContext).settings.first()
-            val expected = settings.carBluetoothMac
-            val deviceName = try { device.name } catch (_: SecurityException) { null }
-            val isCar = expected != null && expected.equals(address, ignoreCase = true)
-            when (action) {
-                BluetoothDevice.ACTION_ACL_CONNECTED ->
-                    BluetoothCarStateMachine.onAclConnected(address, deviceName, isCar)
-                BluetoothDevice.ACTION_ACL_DISCONNECTED ->
-                    BluetoothCarStateMachine.onAclDisconnected(address, isCar)
-            }
-            if (expected == null || !settings.activateOnBluetooth) {
-                EventLogger.info(TAG, "BT event $action $address ignored (no car configured / disabled).")
-                return@launch
-            }
-            if (isCar) {
+            try {
+                val settings = SettingsRepository(appContext).settings.first()
+                val expected = settings.carBluetoothMac
+                val deviceName = try { bluetoothDevice.name } catch (_: SecurityException) { null }
+                val isCar = expected != null && expected.equals(address, ignoreCase = true)
                 when (action) {
-                    BluetoothDevice.ACTION_ACL_CONNECTED -> {
-                        EventLogger.info(TAG, "Authorised car Bluetooth connected → driving mode.")
-                        CarDetectionEvents.notify(CarDetectionEvents.Trigger.BluetoothConnected(address))
-                    }
-                    BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
-                        EventLogger.info(TAG, "Authorised car Bluetooth disconnected.")
-                        CarDetectionEvents.notify(CarDetectionEvents.Trigger.BluetoothDisconnected(address))
-                    }
+                    BluetoothDevice.ACTION_ACL_CONNECTED ->
+                        BluetoothCarStateMachine.onAclConnected(address, deviceName, isCar)
+                    BluetoothDevice.ACTION_ACL_DISCONNECTED ->
+                        BluetoothCarStateMachine.onAclDisconnected(address, isCar)
                 }
-            } else {
-                EventLogger.info(TAG, "BT event $action from non-car device $deviceName; ignored.")
+                if (expected == null || !settings.activateOnBluetooth) {
+                    EventLogger.info(TAG, "BT event $action $address ignored (no car configured / disabled).")
+                    return@launch
+                }
+                if (isCar) {
+                    when (action) {
+                        BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                            EventLogger.info(TAG, "Authorised car Bluetooth connected -> driving mode.")
+                            CarDetectionEvents.notify(CarDetectionEvents.Trigger.BluetoothConnected(address))
+                        }
+                        BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
+                            EventLogger.info(TAG, "Authorised car Bluetooth disconnected.")
+                            CarDetectionEvents.notify(CarDetectionEvents.Trigger.BluetoothDisconnected(address))
+                        }
+                    }
+                } else {
+                    EventLogger.info(TAG, "BT event $action from non-car device $deviceName; ignored.")
+                }
+            } finally {
+                pendingResult.finish()
             }
         }
     }
