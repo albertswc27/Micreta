@@ -6,7 +6,7 @@ activa cuando detecta que has entrado en el coche (BT del coche, cargador o
 **velocidad GPS sostenida**), te pregunta a dónde vas, abre Waze, controla
 música y lee datos del motor por OBD2 Bluetooth **solo cuando se lo pides**.
 
-Esta es la **v0.2.0 "Daily driver"** — todo corre localmente, sin backend ni
+La versión actual es **v0.2.6 "Daily driver"** — todo corre localmente, sin backend ni
 nube. Para la integración de [ruvnet/ruflo](https://github.com/ruvnet/ruflo)
 en el workflow de desarrollo ver [`RUFLO_INTEGRATION.md`](RUFLO_INTEGRATION.md).
 
@@ -25,11 +25,11 @@ Para revisar la app con el coche parado, descarga el
 
 ---
 
-## Último añadido en v0.2.5
+## Último añadido en v0.2.6
 
-- D05: "pon mi playlist X" lanza búsqueda/reproducción en la app musical configurada.
-- F08: aviso hablado de descanso tras más de 2 horas de conducción continua.
-- G02-G05: mantenimiento editable por km o fecha, con recordatorios proactivos para ITV, seguro, revisión y neumáticos.
+- J04: avatar visual de Micreta sincronizado con el estado real de la app/coche.
+- Dashboard principal con estado compacto: modo conducción, coche, Bluetooth y estado de Micreta.
+- Nuevos assets pixel-art integrados: neutra, escuchando, pensando, feliz y secuencia bailando.
 
 ## Qué hay nuevo en v0.2.0
 

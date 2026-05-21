@@ -1,5 +1,6 @@
 package com.micreta.app.feature.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.micreta.app.MicretaApp
@@ -85,7 +88,15 @@ fun HomeScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(14.dp))
+        DashboardStatusStrip(
+            state = state,
+            running = running,
+            carName = settings.carName,
+            carBluetoothName = settings.carBluetoothName
+        )
+
+        Spacer(Modifier.height(20.dp))
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -177,4 +188,98 @@ private fun labelFor(state: MicretaState): String = when (state) {
     MicretaState.HAPPY -> "Contenta"
     MicretaState.NEUTRAL -> "Lista"
     MicretaState.ERROR -> "Error"
+}
+
+@Composable
+private fun DashboardStatusStrip(
+    state: MicretaState,
+    running: Boolean,
+    carName: String,
+    carBluetoothName: String?
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DashboardStatusPill(
+                label = "Modo",
+                value = if (running) "Conducción activa" else "En espera",
+                highlighted = running,
+                modifier = Modifier.weight(1f)
+            )
+            DashboardStatusPill(
+                label = "Coche",
+                value = carName.ifBlank { "Sin nombre" },
+                highlighted = state == MicretaState.CONNECTED,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DashboardStatusPill(
+                label = "Micreta",
+                value = labelFor(state),
+                highlighted = state in setOf(MicretaState.LISTENING, MicretaState.THINKING, MicretaState.HAPPY),
+                modifier = Modifier.weight(1f)
+            )
+            DashboardStatusPill(
+                label = "Bluetooth",
+                value = carBluetoothName ?: "Sin configurar",
+                highlighted = carBluetoothName != null,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardStatusPill(
+    label: String,
+    value: String,
+    highlighted: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val background = if (highlighted) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val labelColor = if (highlighted) {
+        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val valueColor = if (highlighted) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    Column(
+        modifier = modifier
+            .background(background, RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = labelColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }

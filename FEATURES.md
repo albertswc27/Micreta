@@ -148,7 +148,7 @@ Marca con `[x]` las que quieras priorizar. Cada item lleva un código (`A01`, `B
 - [ ] `J01` 🔧 Eco-driving streak (días consecutivos con eco-score >80)
 - [ ] `J02` 🔧 ⭐ Badges/logros (1000km, conducción suave, ahorro de combustible)
 - [ ] `J03` 🔧 Leaderboard familiar (varias instancias compartiendo coche)
-- [ ] `J04` ⚡ ⭐ Estados emocionales visuales de Micreta (feliz/triste/preocupada)
+- [x] `J04` ✅ v0.2.6 Estados emocionales visuales de Micreta sincronizados con app/coche
 - [x] `J05` ✅ v0.2.0 Reacciones a eventos ("¡qué frenazo!", "buen consumo hoy")
 - [ ] `J06` 🔧 Diario del coche / blog automático semanal
 - [ ] `J07` ⚡ Customización: paleta de colores, animaciones, frases personalizadas
