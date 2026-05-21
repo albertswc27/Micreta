@@ -105,6 +105,24 @@ fun SettingsScreen(
             ToggleRow("Ofrecer voz al conectar el coche", settings.autoListenOnCarBluetooth) {
                 scope.launch { app.container.settingsRepository.setAutoListenOnCarBluetooth(it) }
             }
+            val wakeAvailable = app.container.wakeWord.available
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Activar \"Hola Micreta\"", style = MaterialTheme.typography.bodyLarge)
+                    if (!wakeAvailable) {
+                        Text(
+                            "Wake word todavía no disponible (pendiente de motor de voz).",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = settings.wakeWordEnabled && wakeAvailable,
+                    enabled = wakeAvailable,
+                    onCheckedChange = { scope.launch { app.container.settingsRepository.setWakeWordEnabled(it) } }
+                )
+            }
             ToggleRow("Activar al conectar el cargador", settings.activateOnCharging) {
                 scope.launch { app.container.settingsRepository.setActivateOnCharging(it) }
             }

@@ -32,5 +32,6 @@ data class AppSettings(
     val resumeLastMediaOnDrive: Boolean = true,        // D03
     val tripsEnabled: Boolean = true,                  // E04/E05 master switch
     val customCommandsEnabled: Boolean = true,         // B10
-    val autoListenOnCarBluetooth: Boolean = true       // P2 — offer voice when car BT connects
+    val autoListenOnCarBluetooth: Boolean = true,      // P2 — offer voice when car BT connects
+    val wakeWordEnabled: Boolean = false               // A06 — off until an engine is available
 )

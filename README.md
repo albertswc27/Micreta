@@ -6,7 +6,7 @@ activa cuando detecta que has entrado en el coche (BT del coche, cargador o
 **velocidad GPS sostenida**), te pregunta a dónde vas, abre Waze, controla
 música y lee datos del motor por OBD2 Bluetooth **solo cuando se lo pides**.
 
-La versión actual es **v0.2.6 "Daily driver"** — todo corre localmente, sin backend ni
+La versión actual es **v0.2.7 "Daily driver"** — todo corre localmente, sin backend ni
 nube. Para la integración de [ruvnet/ruflo](https://github.com/ruvnet/ruflo)
 en el workflow de desarrollo ver [`RUFLO_INTEGRATION.md`](RUFLO_INTEGRATION.md).
 
@@ -24,6 +24,42 @@ Para revisar la app con el coche parado, descarga el
 [versión editable en Markdown](docs/guion-pruebas-en-parado.md).
 
 ---
+
+## Estado v0.2.7 — auditoría de flujos
+
+Leyenda: ✅ funciona · 🧪 experimental · ⏳ pendiente · 🎭 mock/demo.
+
+| Área | Estado |
+|---|---|
+| Navegación entre pantallas (Home/Conducción/Voz/Coche/Viajes/Ajustes) | ✅ back stack único y predecible |
+| Voz: enrutado de comandos (música, gasolinera, diagnóstico, destinos) | ✅ se parsea antes de tratar como destino; tolera frases imperfectas |
+| Voz: se detiene el micrófono al salir de la pantalla Voz | ✅ |
+| Música: "pon música" reanuda la app activa (no fuerza abrir Spotify) | ✅ |
+| Gasolineras: ubicación real (FusedLocation) + precios Ministerio | ✅ (precios donde la API los da, si no "Precio no disponible") |
+| Recordatorios mantenimiento por km y por fecha (ITV, seguro…) | ✅ |
+| Aviso de conducción > 2 h | ✅ |
+| Wake word "Hola Micreta" | ⏳ scaffold listo, motor pendiente (Picovoice) |
+| Anuncio de canción al cambiar | ⏳ requiere acceso a notificaciones |
+| Radares DGT | ⏳ pendiente de empaquetar dataset |
+| OBD real (ELM327) | 🎭 mock por defecto; real al configurar adaptador |
+
+### Cambios de esta versión
+- **Enrutado de voz robusto**: "pon música", "música", "pon Spotify/Velune", "gasolinera cercana",
+  "diagnóstico", "cómo está el coche" se interpretan correctamente; una frase solo se trata como
+  destino si el parser no la reconoce y se estaba esperando destino. Cubierto con tests.
+- **Navegación**: back stack único (sin estados raros al volver a Home).
+- **Micrófono**: se detiene al abandonar la pantalla Voz (no arrastra estado).
+- **Gasolineras**: nunca usan Barcelona como fallback; usan tu ubicación real o muestran error claro.
+- **Wake word**: interfaz `WakeWordManager` + impl deshabilitada + ajuste "Activar Hola Micreta"
+  (desactivado mientras no haya motor) + aviso "todavía no disponible".
+- **Paleta visual** navy/azul/cian centralizada en `ui/theme/Color.kt` + `Theme.kt`.
+- **Pantalla Voz**: chips de sugerencias ("Pon música", "Llévame a casa", "Gasolinera cercana", "Diagnóstico").
+
+### Limitaciones actuales
+- Wake word no funciona aún (sin motor); se activa por botón o por la acción "Hablar" de la notificación.
+- Sin escucha continua en segundo plano (decisión de batería/privacidad).
+- Precios de gasolina: solo donde la API del Ministerio los publica; nunca se inventan.
+- Radares y anuncio de canción: pendientes (ver tabla).
 
 ## Último añadido en v0.2.6
 

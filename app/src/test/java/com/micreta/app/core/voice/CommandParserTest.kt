@@ -116,4 +116,58 @@ class CommandParserTest {
         assertTrue(CommandParser.parse("repostar") is VoiceCommand.FindCheapGasStation)
         assertTrue(CommandParser.parse("buscar gasolinera") is VoiceCommand.FindCheapGasStation)
     }
+
+    // ---- Audit: imperfect phrasing must still route correctly ----------
+
+    @Test
+    fun music_imperfectPhrasings_arePlayMusic() {
+        listOf(
+            "pon música", "música", "pon la música", "ponme música",
+            "pon algo de música", "quiero escuchar música", "dale a la música",
+            "reproduce música", "pon Spotify", "pon Velune"
+        ).forEach { phrase ->
+            assertTrue("'$phrase' should be PlayMusic", route(phrase, awaiting = false) is VoiceCommand.PlayMusic)
+        }
+    }
+
+    @Test
+    fun gasStation_nearbyPhrasings_areFindCheap() {
+        listOf(
+            "gasolinera más barata", "gasolinera cercana", "gasolinera más cercana",
+            "buscar gasolinera cercana", "dónde hay una gasolinera", "gasolinera"
+        ).forEach { phrase ->
+            assertTrue("'$phrase' should be FindCheapGasStation", route(phrase, awaiting = false) is VoiceCommand.FindCheapGasStation)
+        }
+    }
+
+    @Test
+    fun status_phrasings_areVehicleStatus() {
+        listOf("diagnóstico", "cómo está el coche", "cómo está mi coche", "qué tal el coche").forEach { phrase ->
+            assertTrue("'$phrase' should be VehicleStatusQuery", route(phrase, awaiting = false) is VoiceCommand.VehicleStatusQuery)
+        }
+    }
+
+    // ---- Audit: AwaitingDestination must not swallow global commands ----
+
+    @Test
+    fun awaitingDestination_playMusic_runsMusic() {
+        assertTrue(route("pon música", awaiting = true) is VoiceCommand.PlayMusic)
+    }
+
+    @Test
+    fun awaitingDestination_gasStation_runsSearch() {
+        assertTrue(route("gasolinera más barata", awaiting = true) is VoiceCommand.FindCheapGasStation)
+    }
+
+    @Test
+    fun awaitingDestination_bareDestination_navigates() {
+        val cmd = route("al gimnasio", awaiting = true)
+        assertTrue(cmd is VoiceCommand.NavigateTo)
+        assertEquals("gimnasio", (cmd as VoiceCommand.NavigateTo).destination)
+    }
+
+    @Test
+    fun unknownPhrase_staysUnknown_whenNotAwaiting() {
+        assertTrue(route("enciende la nave espacial", awaiting = false) is VoiceCommand.Unknown)
+    }
 }

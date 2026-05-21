@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,10 +17,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -109,6 +112,12 @@ fun VoiceCommandScreen(
         if (autoStart) startVoiceWithPermission()
     }
 
+    // Stop the recognizer when leaving the Voz screen so it never keeps
+    // listening in the background or carries state into the next screen.
+    DisposableEffect(Unit) {
+        onDispose { vm.cancel() }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -165,6 +174,14 @@ fun VoiceCommandScreen(
             }
         }
 
+        // "Qué puedes decir" — tappable suggestions when idle or after an error.
+        if (state == VoiceUiState.Idle || state is VoiceUiState.Failed) {
+            Spacer(Modifier.height(12.dp))
+            MicretaCard(title = "Prueba a decir") {
+                SuggestionChips(onPick = { vm.submitText(it) })
+            }
+        }
+
         Spacer(Modifier.weight(1f))
 
         if (state == VoiceUiState.Listening) {
@@ -183,6 +200,24 @@ fun VoiceCommandScreen(
                 onClick = { startVoiceWithPermission() },
                 modifier = Modifier.fillMaxWidth().height(72.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun SuggestionChips(onPick: (String) -> Unit) {
+    val suggestions = listOf("Pon música", "Llévame a casa", "Gasolinera cercana", "Diagnóstico")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        suggestions.chunked(2).forEach { rowItems ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                rowItems.forEach { phrase ->
+                    AssistChip(
+                        onClick = { onPick(phrase) },
+                        label = { Text(phrase) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 }

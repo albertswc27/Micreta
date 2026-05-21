@@ -55,6 +55,10 @@ class AppContainer(context: Context) {
     // Voice + media
     val tts by lazy { TextToSpeechManager(appContext) }
     val voice by lazy { VoiceRecognitionManager(appContext) }
+    // Wake word: disabled until a real engine (Picovoice) is wired in.
+    val wakeWord: com.micreta.app.core.voice.WakeWordManager by lazy {
+        com.micreta.app.core.voice.DisabledWakeWordManager()
+    }
     val media by lazy { MediaControllerManager(appContext) }
     val waze by lazy { WazeNavigator(appContext) }
 

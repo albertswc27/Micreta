@@ -78,9 +78,9 @@ private val dateFmt = SimpleDateFormat("EEE d MMM, HH:mm", Locale("es", "ES"))
 @Composable
 private fun TripRow(trip: TripSummary) {
     val ecoColor = when {
-        trip.ecoScore >= 80 -> MaterialTheme.colorScheme.secondary
-        trip.ecoScore >= 50 -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.error
+        trip.ecoScore >= 80 -> MaterialTheme.colorScheme.tertiary   // verde = mejor
+        trip.ecoScore >= 50 -> MaterialTheme.colorScheme.secondary  // cian = correcto
+        else -> MaterialTheme.colorScheme.error                     // rojo = brusco
     }
     MicretaCard(title = dateFmt.format(Date(trip.startedAtMs)), accent = ecoColor) {
         Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -88,6 +88,13 @@ class VoiceCommandViewModel : ViewModel() {
         startListening()
     }
 
+    /** Runs a typed/suggested phrase through the same pipeline as speech (UI chips). */
+    fun submitText(text: String) {
+        if (_uiState.value is VoiceUiState.Listening) voice.stop()
+        _pending.value = PendingTurn.None
+        onTranscript(text)
+    }
+
     fun cancel() {
         voice.stop()
         _uiState.value = VoiceUiState.Idle

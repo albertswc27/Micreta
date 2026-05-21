@@ -45,17 +45,19 @@ object CommandParser {
     // P3 — cheap gas station search. Checked BEFORE lastFuel/navigate so
     // "llevame a una gasolinera barata" doesn't become a generic destination.
     private val gasStationPatterns = listOf(
-        Regex("""^gasolinera\s+mas\s+barata.*$"""),
         Regex("""^(?:la\s+)?gasolinera\s+mas\s+barata.*$"""),
         Regex("""^gasolina\s+mas\s+barata.*$"""),
         Regex("""^gasolinera\s+barata.*$"""),
-        Regex("""^buscar\s+gasolina$"""),
-        Regex("""^buscar\s+(?:una\s+)?gasolinera.*$"""),
-        Regex("""^busca\s+(?:una\s+)?gasolinera.*$"""),
+        Regex("""^gasolinera\s+(?:mas\s+)?cercana.*$"""),
+        Regex("""^(?:una\s+)?gasolinera\s+cerca.*$"""),
+        Regex("""^buscar?\s+(?:una\s+)?gasolinera.*$"""),
+        Regex("""^busca\s+gasolina.*$"""),
         Regex("""^echar\s+gasolina$"""),
         Regex("""^repostar$"""),
         Regex("""^donde\s+(?:puedo\s+)?repostar.*$"""),
-        Regex("""^llevame\s+a\s+una\s+gasolinera(?:\s+barata)?$""")
+        Regex("""^donde\s+(?:hay\s+)?(?:una\s+)?gasolinera.*$"""),
+        Regex("""^llevame\s+a\s+una\s+gasolinera(?:\s+(?:barata|cercana))?$"""),
+        Regex("""^gasolinera$""")
     )
 
     private val lastFuelPatterns = listOf(
@@ -90,15 +92,19 @@ object CommandParser {
     )
 
     private val musicPlay = listOf(
-        Regex("""^pon\s+musica.*$"""),
-        Regex("""^reproduce\s+musica.*$"""),
-        Regex("""^pon\s+algo\s+de\s+musica.*$"""),
-        Regex("""^dale\s+(?:a\s+la\s+)?musica$"""),
-        Regex("""^quiero\s+musica.*$"""),
+        // Forgiving: any "pon/ponme/reproduce … música …" plus bare "música".
+        Regex("""^pon\s+(?:la\s+|algo\s+de\s+|un\s+poco\s+de\s+)?musica.*$"""),
+        Regex("""^ponme\s+(?:la\s+|algo\s+de\s+)?musica.*$"""),
+        Regex("""^reproduce\s+(?:la\s+|algo\s+de\s+)?musica.*$"""),
+        Regex("""^reproduce\s+algo$"""),
+        Regex("""^quiero\s+(?:escuchar\s+)?musica.*$"""),
+        Regex("""^dale\s+(?:a\s+la\s+)?musica.*$"""),
+        Regex("""^musica.*$"""),
         Regex("""^pon\s+spotify.*$"""),
         Regex("""^abre\s+spotify.*$"""),
-        Regex("""^pon\s+musica\s+en\s+spotify.*$"""),
-        Regex("""^musica$""")
+        Regex("""^pon\s+velune.*$"""),
+        Regex("""^abre\s+velune.*$"""),
+        Regex("""^pon\s+musica\s+en\s+(?:spotify|velune).*$""")
     )
     private val musicPause = listOf(
         Regex("""^pausa(?:\s+la\s+musica)?$"""),
@@ -131,9 +137,10 @@ object CommandParser {
     // ---- OBD / status ---------------------------------------------------
 
     private val statusPatterns = listOf(
-        Regex("""^como\s+esta\s+el\s+coche$"""),
-        Regex("""^diagnostico$"""),
-        Regex("""^revisa\s+el\s+coche$"""),
+        Regex("""^como\s+esta\s+(?:el|mi)\s+coche.*$"""),
+        Regex("""^que\s+tal\s+(?:el|mi)\s+coche.*$"""),
+        Regex("""^diagnostico.*$"""),
+        Regex("""^revisa\s+(?:el\s+)?coche$"""),
         Regex("""^estado\s+del\s+coche$"""),
         Regex("""^lee\s+(?:el\s+)?coche$""")
     )
