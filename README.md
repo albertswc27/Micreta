@@ -25,6 +25,12 @@ Para revisar la app con el coche parado, descarga el
 
 ---
 
+## Último añadido en v0.2.5
+
+- D05: "pon mi playlist X" lanza búsqueda/reproducción en la app musical configurada.
+- F08: aviso hablado de descanso tras más de 2 horas de conducción continua.
+- G02-G05: mantenimiento editable por km o fecha, con recordatorios proactivos para ITV, seguro, revisión y neumáticos.
+
 ## Qué hay nuevo en v0.2.0
 
 **Activación inteligente**

@@ -36,6 +36,9 @@ import com.micreta.app.domain.model.MaintenanceTask
 import com.micreta.app.ui.components.MicretaCard
 import com.micreta.app.ui.components.PrimaryActionButton
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 @Composable
@@ -79,9 +82,7 @@ fun MaintenanceScreen() {
 
         tasks.forEach { task ->
             MaintenanceRow(task, currentKm = odometer,
-                onToggle = { enabled ->
-                    scope.launch { app.container.maintenanceRepository.upsert(task.copy(enabled = enabled)) }
-                },
+                onSave = { updated -> scope.launch { app.container.maintenanceRepository.upsert(updated) } },
                 onReset = {
                     scope.launch {
                         app.container.maintenanceRepository.upsert(
@@ -96,26 +97,50 @@ fun MaintenanceScreen() {
             )
         }
 
-        PrimaryActionButton(
-            label = "Añadir tarea",
-            icon = Icons.Filled.Add,
-            onClick = {
-                scope.launch {
-                    app.container.maintenanceRepository.upsert(
-                        MaintenanceTask(
-                            id = UUID.randomUUID().toString(),
-                            title = "Nueva tarea",
-                            kind = MaintenanceTask.Kind.OTHER,
-                            intervalKm = 10_000,
-                            intervalDays = null
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PrimaryActionButton(
+                label = "Por km",
+                icon = Icons.Filled.Add,
+                onClick = {
+                    scope.launch {
+                        app.container.maintenanceRepository.upsert(
+                            MaintenanceTask(
+                                id = UUID.randomUUID().toString(),
+                                title = "Nueva tarea",
+                                kind = MaintenanceTask.Kind.OTHER,
+                                intervalKm = 10_000,
+                                intervalDays = null,
+                                baseOdometerKm = odometer ?: 0
+                            )
                         )
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            container = MaterialTheme.colorScheme.surfaceVariant,
-            content = MaterialTheme.colorScheme.onSurface
-        )
+                    }
+                },
+                modifier = Modifier.weight(1f).height(56.dp),
+                container = MaterialTheme.colorScheme.surfaceVariant,
+                content = MaterialTheme.colorScheme.onSurface
+            )
+            PrimaryActionButton(
+                label = "Por fecha",
+                icon = Icons.Filled.Add,
+                onClick = {
+                    scope.launch {
+                        app.container.maintenanceRepository.upsert(
+                            MaintenanceTask(
+                                id = UUID.randomUUID().toString(),
+                                title = "Nuevo recordatorio",
+                                kind = MaintenanceTask.Kind.OTHER,
+                                intervalKm = null,
+                                intervalDays = 365,
+                                baseAtMs = System.currentTimeMillis()
+                            )
+                        )
+                    }
+                },
+                modifier = Modifier.weight(1f).height(56.dp),
+                container = MaterialTheme.colorScheme.surfaceVariant,
+                content = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
@@ -123,31 +148,62 @@ fun MaintenanceScreen() {
 private fun MaintenanceRow(
     task: MaintenanceTask,
     currentKm: Int?,
-    onToggle: (Boolean) -> Unit,
+    onSave: (MaintenanceTask) -> Unit,
     onReset: () -> Unit,
     onDelete: () -> Unit
 ) {
     val due = task.isDue(currentKm)
-    val color = if (due) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    var title by remember(task.id) { mutableStateOf(task.title) }
+    var km by remember(task.id) { mutableStateOf(task.intervalKm?.toString() ?: "") }
+    var days by remember(task.id) { mutableStateOf(task.intervalDays?.toString() ?: "") }
+
     MicretaCard(title = task.title, accent = if (due) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline) {
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it; onSave(task.copy(title = it)) },
+            label = { Text("Nombre (ITV, seguro, neumáticos…)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = km,
+                onValueChange = { v -> km = v.filter { it.isDigit() }; onSave(task.copy(intervalKm = km.toIntOrNull())) },
+                label = { Text("Cada km") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedTextField(
+                value = days,
+                onValueChange = { v -> days = v.filter { it.isDigit() }; onSave(task.copy(intervalDays = days.toIntOrNull())) },
+                label = { Text("Cada días") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (currentKm != null && task.intervalKm != null) {
+            val nextAt = task.baseOdometerKm + task.intervalKm
+            val remaining = nextAt - currentKm
+            Text(
+                if (remaining > 0) "Próximo a $nextAt km (faltan $remaining)" else "Vencido (a $nextAt km)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (remaining > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+            )
+        }
+        task.intervalDays?.let { d ->
+            val dueAt = task.baseAtMs + d * 86_400_000L
+            val daysLeft = (dueAt - System.currentTimeMillis()) / 86_400_000L
+            val df = SimpleDateFormat("d MMM yyyy", Locale("es", "ES"))
+            Text(
+                if (daysLeft >= 0) "Próxima: ${df.format(Date(dueAt))} · faltan $daysLeft días"
+                else "Vencida el ${df.format(Date(dueAt))}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (daysLeft >= 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+            )
+        }
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                val byKm = task.intervalKm?.let { "cada $it km" }
-                val byDays = task.intervalDays?.let { "cada $it días" }
-                val interval = listOfNotNull(byKm, byDays).joinToString(" y ")
-                Text(interval, style = MaterialTheme.typography.bodyLarge, color = color)
-                if (currentKm != null && task.intervalKm != null) {
-                    val nextAt = task.baseOdometerKm + task.intervalKm
-                    val remaining = nextAt - currentKm
-                    Text(
-                        if (remaining > 0) "Próximo a $nextAt km (faltan $remaining)" else "Vencido (a $nextAt km)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Switch(checked = task.enabled, onCheckedChange = onToggle)
-            IconButton(onClick = onReset) { Icon(Icons.Filled.Check, contentDescription = "Hecho · reset") }
+            Text("Activa", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Switch(checked = task.enabled, onCheckedChange = { onSave(task.copy(enabled = it)) })
+            IconButton(onClick = onReset) { Icon(Icons.Filled.Check, contentDescription = "Hecho · reiniciar") }
             IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "Eliminar") }
         }
     }

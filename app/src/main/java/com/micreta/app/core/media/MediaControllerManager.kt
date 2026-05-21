@@ -1,9 +1,11 @@
 package com.micreta.app.core.media
 
+import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.os.SystemClock
+import android.provider.MediaStore
 import android.view.KeyEvent
 import com.micreta.app.core.logging.EventLogger
 
@@ -63,6 +65,28 @@ class MediaControllerManager(private val context: Context) {
         } catch (e: Exception) {
             EventLogger.warn(TAG, "Could not launch music app: ${e.message}")
             false
+        }
+    }
+
+    /**
+     * D05 — "pon mi playlist X". Fires the standard "play from search" intent
+     * (what Google Assistant uses) so the music app starts that playlist/query.
+     * Falls back to just launching the app if it doesn't handle search.
+     */
+    fun playFromSearch(packageName: String?, query: String): Boolean {
+        val intent = Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH).apply {
+            putExtra(SearchManager.QUERY, query)
+            putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/playlist")
+            if (!packageName.isNullOrBlank()) setPackage(packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return try {
+            context.startActivity(intent)
+            EventLogger.info(TAG, "Play-from-search \"$query\" in ${packageName ?: "default"}")
+            true
+        } catch (e: Exception) {
+            EventLogger.warn(TAG, "play-from-search failed (${e.message}); launching app instead.")
+            launchMusicApp(packageName)
         }
     }
 

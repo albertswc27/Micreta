@@ -46,6 +46,7 @@ class MicretaForegroundService : LifecycleService() {
 
     private var speedLimitEventsJob: Job? = null
     private var motionEventsJob: Job? = null
+    private var longDriveJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -157,6 +158,31 @@ class MicretaForegroundService : LifecycleService() {
             app.container.tts.speak("$where¿Cuánto has echado? Te abro el registro de repostajes.")
             postRefuelPrompt(pending.stationName)
         }
+
+        // G02-G05: remind about any maintenance task due (ITV, seguro, aceite…).
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(6_000) // after greeting + refuel prompt
+            val odo = runCatching { app.container.maintenanceRepository.odometerKm.first() }.getOrNull()
+            val due = runCatching { app.container.maintenanceRepository.tasks.first().filter { it.isDue(odo) } }.getOrNull().orEmpty()
+            if (due.isNotEmpty()) {
+                val list = due.joinToString(", ") { it.title }
+                app.container.tts.speak(
+                    if (due.size == 1) "Recuerda: $list está pendiente." else "Recuerda: tienes pendientes $list."
+                )
+            }
+        }
+
+        // F08: suggest a break after 2 h of continuous driving, then hourly.
+        longDriveJob?.cancel()
+        longDriveJob = lifecycleScope.launch {
+            kotlinx.coroutines.delay(2 * 60 * 60_000L)
+            while (true) {
+                app.container.tts.speak(
+                    "Llevas más de dos horas conduciendo, ${app.container.personality.ownerName}. Cuando puedas, para a descansar."
+                )
+                kotlinx.coroutines.delay(60 * 60_000L)
+            }
+        }
     }
 
     private fun stopDriving() {
@@ -166,6 +192,8 @@ class MicretaForegroundService : LifecycleService() {
         speedLimitEventsJob = null
         motionEventsJob?.cancel()
         motionEventsJob = null
+        longDriveJob?.cancel()
+        longDriveJob = null
         app.container.obd.stop()
         app.container.speedLimitWatcher.stop()
         runCatching { app.container.dnd.deactivate() }
@@ -315,6 +343,8 @@ class MicretaForegroundService : LifecycleService() {
         speedLimitEventsJob = null
         motionEventsJob?.cancel()
         motionEventsJob = null
+        longDriveJob?.cancel()
+        longDriveJob = null
         _isRunning.value = false
     }
 

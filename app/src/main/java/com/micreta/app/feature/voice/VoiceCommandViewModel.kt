@@ -401,9 +401,9 @@ class VoiceCommandViewModel : ViewModel() {
 
     private suspend fun openPlaylist(name: String) {
         val s = container.settingsRepository.settings.first()
-        val pkg = s.musicAppPackage
-        media.launchMusicApp(pkg)
+        media.playFromSearch(s.musicAppPackage, name)
         tts.speak("Pongo la lista $name.")
+        container.setState(MicretaState.HAPPY)
         _uiState.value = VoiceUiState.Done("Playlist: $name")
     }
 

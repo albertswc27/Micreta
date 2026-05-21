@@ -63,7 +63,7 @@ Marca con `[x]` las que quieras priorizar. Cada item lleva un código (`A01`, `B
 - [x] `D02` ✅ App musical configurable
 - [x] `D03` ✅ v0.2.0 Resume última canción/podcast automáticamente al entrar en modo conducción
 - [ ] `D04` 🔧 Sugerencia de playlist por mood (clima + hora + ruta corta/larga)
-- [ ] `D05` ⚡ "Pon mi playlist [nombre]" — abrir Spotify deep-link a playlist concreta
+- [x] `D05` ✅ v0.2.5 "Pon mi playlist [nombre]" — lanzar búsqueda de playlist en la app musical configurada
 - [x] `D06` ✅ v0.2.0 Ducking: baja la música cuando Micreta habla y la sube cuando termina
 - [ ] `D07` 🔧 Comandos para podcasts: skip 30s, slow down, marcar capítulo
 - [ ] `D08` ⚡ Modo audiolibro: pausa al desconectar BT, retoma al volver
@@ -98,7 +98,7 @@ Marca con `[x]` las que quieras priorizar. Cada item lleva un código (`A01`, `B
 - [ ] `F05` ⚡ Auto-respuesta SMS "estoy conduciendo, te llamo luego"
 - [x] `F06` ✅ v0.2.0 Modo "no molestar" estricto durante conducción
 - [ ] `F07` 🧪 Lectura de señales de tráfico por cámara (OCR + ML Kit)
-- [ ] `F08` ⚡ Aviso de conducción continua >2h ("Albert, llevas 2 horas, una pausa")
+- [x] `F08` ✅ v0.2.5 Aviso de conducción continua >2h ("Albert, llevas 2 horas, una pausa")
 - [ ] `F09` 🧪 ⚠️ Detección de uso del móvil en mano mientras se conduce
 - [ ] `F10` 🔧 Compartir ubicación en vivo con familia al iniciar viaje largo
 - [x] `F11` ✅ v0.2.0 SOS por voz con countdown cancelable (ACTION_DIAL, no auto-call)
@@ -108,10 +108,10 @@ Marca con `[x]` las que quieras priorizar. Cada item lleva un código (`A01`, `B
 ## G · Mantenimiento del coche
 
 - [x] `G01` ✅ v0.2.0 Recordatorio de cambio de aceite por km (también ITV y seguro por defecto)
-- [ ] `G02` ⚡ Recordatorio de revisión por fecha
-- [ ] `G03` ⚡ Cambio de neumáticos (km + temporada verano/invierno)
-- [ ] `G04` ⚡ Recordatorio de ITV (España)
-- [ ] `G05` ⚡ Recordatorio de seguro / vencimiento
+- [x] `G02` ✅ v0.2.5 Recordatorio de revisión por fecha
+- [x] `G03` ✅ v0.2.5 Cambio de neumáticos por km / fecha configurable
+- [x] `G04` ✅ v0.2.5 Recordatorio de ITV (España)
+- [x] `G05` ✅ v0.2.5 Recordatorio de seguro / vencimiento
 - [x] `G06` ✅ v0.2.0 Log de repostajes (precio €, litros, km, consumo derivado)
 - [ ] `G07` 🔧 Coste mensual del coche (gasolina + seguro + mantenimiento)
 - [ ] `G08` ⚡ Aviso cambio de filtros / bujías / correa
