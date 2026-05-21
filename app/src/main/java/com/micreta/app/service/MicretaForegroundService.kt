@@ -1,13 +1,18 @@
 package com.micreta.app.service
 
+import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.micreta.app.MainActivity
@@ -67,7 +72,13 @@ class MicretaForegroundService : LifecycleService() {
         }
 
         EventLogger.info(TAG, "Starting driving mode.")
-        startForeground(NOTIFICATION_ID, buildNotification())
+        if (!startForegroundSafely()) {
+            // On Android 14+ a typed FGS needs its runtime permission; if none is
+            // granted, starting would throw. Abort cleanly instead of crashing.
+            EventLogger.warn(TAG, "Foreground start not permitted (missing permission?). Aborting driving mode.")
+            stopSelf()
+            return
+        }
         _isRunning.value = true
 
         val app = MicretaApp.get()
@@ -237,6 +248,38 @@ class MicretaForegroundService : LifecycleService() {
         builder.addAction(0, getString(R.string.action_stop), stopPi)
         builder.addAction(0, getString(R.string.action_car), carPi)
         return builder.build()
+    }
+
+    /**
+     * Starts the foreground service with a service type matching the runtime
+     * permissions we actually hold. On Android 14+ a `location`/`connectedDevice`
+     * FGS started without the matching permission throws — this avoids the crash
+     * (e.g. tapping "Activar Micreta" before granting location).
+     */
+    private fun startForegroundSafely(): Boolean {
+        val type = computeForegroundType()
+        return try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
+            true
+        } catch (e: Exception) {
+            EventLogger.error(TAG, "startForeground failed (type=$type): ${e.message}")
+            false
+        }
+    }
+
+    private fun computeForegroundType(): Int {
+        var type = 0
+        val hasLocation =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasBluetooth =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            else true
+        if (hasBluetooth) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        if (hasLocation) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        if (type == 0) type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        return type
     }
 
     /** A tap-to-log notification asking how much fuel was added (refuel-on-arrival). */

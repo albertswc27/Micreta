@@ -29,6 +29,9 @@ class MicretaApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // Capture uncaught crashes to a file so they can be read on the Debug
+        // screen (useful when testing in the car without USB/logcat).
+        com.micreta.app.core.logging.CrashReporter.install(this)
         container = AppContainer(this)
 
         createNotificationChannel()

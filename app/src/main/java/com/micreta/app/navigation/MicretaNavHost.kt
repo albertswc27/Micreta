@@ -83,9 +83,12 @@ fun MicretaNavHost(
                         onClick = {
                             if (current != item.route) {
                                 navController.navigate(item.route) {
-                                    popUpTo(Routes.HOME) { saveState = true }
+                                    // Predictable single back stack: pop back to Home
+                                    // and avoid duplicate copies. (Multi-back-stack
+                                    // save/restore caused screens to become
+                                    // unreachable after returning Home.)
+                                    popUpTo(Routes.HOME) { inclusive = false }
                                     launchSingleTop = true
-                                    restoreState = true
                                 }
                             }
                         },

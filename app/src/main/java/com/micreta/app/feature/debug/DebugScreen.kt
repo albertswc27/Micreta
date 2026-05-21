@@ -20,12 +20,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.micreta.app.MicretaApp
+import com.micreta.app.core.logging.CrashReporter
 import com.micreta.app.core.logging.EventLogger
 import com.micreta.app.domain.model.AppSettings
 import com.micreta.app.domain.model.DebugEvent
@@ -51,8 +56,25 @@ fun DebugScreen() {
         if (events.isNotEmpty()) listState.animateScrollToItem(events.lastIndex)
     }
 
+    val ctx = LocalContext.current
+    var crash by remember { mutableStateOf(CrashReporter.read(ctx)) }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Debug", style = MaterialTheme.typography.headlineMedium)
+
+        crash?.let { text ->
+            MicretaCard(title = "Último crash", accent = MaterialTheme.colorScheme.error) {
+                Text(
+                    text = if (text.length > 2500) text.take(2500) + "…" else text,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { CrashReporter.clear(ctx); crash = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface)
+                ) { Text("Limpiar crash") }
+            }
+        }
 
         MicretaCard(title = "Subsistemas") {
             StatusRow("TTS", if (ttsReady) "Listo" else "Inicializando")
