@@ -332,6 +332,7 @@ private fun FavoriteRow(
 private fun MusicAppSelector(current: String?, onPick: (String?) -> Unit) {
     val candidates = listOf(
         "Sistema (predeterminado)" to null,
+        "Velune" to "com.nikhil.yt",
         "Spotify" to "com.spotify.music",
         "YouTube Music" to "com.google.android.apps.youtube.music",
         "Apple Music" to "com.apple.android.music",

@@ -67,6 +67,7 @@ fun MicretaNavHost(
         when (startRoute) {
             MicretaForegroundService.ROUTE_VOICE -> navController.navigate(Routes.VOICE_AUTO)
             MicretaForegroundService.ROUTE_STATUS -> navController.navigate(Routes.STATUS)
+            MicretaForegroundService.ROUTE_REFUEL -> navController.navigate(Routes.REFUEL)
             else -> {}
         }
         if (startRoute != null) onRouteConsumed()

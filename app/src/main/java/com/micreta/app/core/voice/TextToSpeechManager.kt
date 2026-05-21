@@ -38,8 +38,20 @@ class TextToSpeechManager(context: Context) {
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
         .build()
-    private var focusRequest: AudioFocusRequest? = null
     @Volatile var duckingEnabled: Boolean = true
+    @Volatile private var focusHeld = false
+
+    // Single reusable transient-duck focus request (API 26+). Reusing one
+    // object — guarded by [focusHeld] — prevents leaking focus, which kept
+    // music permanently ducked when several phrases were spoken in a row.
+    private val focusRequest: AudioFocusRequest? by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(audioAttributes)
+                .setOnAudioFocusChangeListener { /* no-op: we only duck while speaking */ }
+                .build()
+        } else null
+    }
 
     private val _ready = MutableStateFlow(false)
     val ready: StateFlow<Boolean> = _ready
@@ -101,14 +113,9 @@ class TextToSpeechManager(context: Context) {
     }
 
     private fun requestFocus() {
-        if (!duckingEnabled) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                .setAudioAttributes(audioAttributes)
-                .setOnAudioFocusChangeListener { /* nothing — we just request, no callbacks */ }
-                .build()
-            focusRequest = req
-            audioManager.requestAudioFocus(req)
+        if (!duckingEnabled || focusHeld) return
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            focusRequest?.let { audioManager.requestAudioFocus(it) } ?: AudioManager.AUDIOFOCUS_REQUEST_FAILED
         } else {
             @Suppress("DEPRECATION")
             audioManager.requestAudioFocus(
@@ -117,16 +124,18 @@ class TextToSpeechManager(context: Context) {
                 AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
             )
         }
+        focusHeld = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
     }
 
     private fun releaseFocus() {
+        if (!focusHeld) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-            focusRequest = null
         } else {
             @Suppress("DEPRECATION")
             audioManager.abandonAudioFocus(null)
         }
+        focusHeld = false
     }
 
     /** Speak [text]. If TTS isn't ready yet, the message is queued. */
@@ -167,6 +176,7 @@ class TextToSpeechManager(context: Context) {
     fun stop() {
         tts.stop()
         _speaking.value = false
+        releaseFocus()
     }
 
     fun shutdown() {

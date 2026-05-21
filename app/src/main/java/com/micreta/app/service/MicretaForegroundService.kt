@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.micreta.app.MainActivity
@@ -14,6 +15,7 @@ import com.micreta.app.MicretaApp
 import com.micreta.app.R
 import com.micreta.app.core.bluetooth.CarDetectionEvents
 import com.micreta.app.core.logging.EventLogger
+import com.micreta.app.domain.model.GeoPoint
 import com.micreta.app.domain.model.MicretaState
 import com.micreta.app.domain.personality.MicretaPersonalityEngine
 import kotlinx.coroutines.Job
@@ -84,6 +86,9 @@ class MicretaForegroundService : LifecycleService() {
         speedLimitEventsJob?.cancel()
         speedLimitEventsJob = lifecycleScope.launch {
             app.container.speedLimitWatcher.events.collect { ev ->
+                // Belt-and-suspenders: honor the live setting so disabling the
+                // warning in Ajustes always takes effect, even mid-drive.
+                if (!app.container.settingsRepository.settings.first().speedLimitWarnEnabled) return@collect
                 app.container.tripRecorder.registerOverSpeedEvent()
                 val phrase = app.container.personality.overSpeedWarning(ev.currentKmh, ev.limitKmh)
                 app.container.tts.speak(phrase)
@@ -131,6 +136,16 @@ class MicretaForegroundService : LifecycleService() {
             runCatching { app.container.tripRecorder.start() }
                 .onFailure { EventLogger.warn(TAG, "Trip recorder failed to start: ${it.message}") }
         }
+
+        // Refuel-on-arrival: if the previous trip ended at a fuel station, ask
+        // now how much was refueled and open the refuel log.
+        lifecycleScope.launch {
+            val pending = runCatching { app.container.refuelRepository.takePending() }.getOrNull() ?: return@launch
+            kotlinx.coroutines.delay(3_500) // let the greeting finish first
+            val where = pending.stationName?.takeIf { it.isNotBlank() }?.let { "Repostaste en $it. " } ?: ""
+            app.container.tts.speak("$where¿Cuánto has echado? Te abro el registro de repostajes.")
+            postRefuelPrompt(pending.stationName)
+        }
     }
 
     private fun stopDriving() {
@@ -153,6 +168,21 @@ class MicretaForegroundService : LifecycleService() {
             } else {
                 app.container.tts.speak(app.container.personality.stopping())
             }
+
+            // Refuel-on-arrival: if we stopped at a fuel station, remember it so
+            // the next car start can ask how much was refueled.
+            val endLat = summary?.endLat
+            val endLon = summary?.endLon
+            if (endLat != null && endLon != null) {
+                runCatching {
+                    val name = app.container.gasStations.nearestFuelName(GeoPoint(endLat, endLon))
+                    if (name != null) {
+                        app.container.refuelRepository.setPending(name)
+                        EventLogger.info(TAG, "Trip ended at a fuel station -> refuel pending.")
+                    }
+                }
+            }
+
             app.container.setState(MicretaState.SLEEPING)
             _isRunning.value = false
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -209,6 +239,27 @@ class MicretaForegroundService : LifecycleService() {
         return builder.build()
     }
 
+    /** A tap-to-log notification asking how much fuel was added (refuel-on-arrival). */
+    private fun postRefuelPrompt(stationName: String?) {
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra(EXTRA_OPEN_ROUTE, ROUTE_REFUEL)
+        }
+        val pi = PendingIntent.getActivity(this, 4, intent, flags)
+        val text = stationName?.takeIf { it.isNotBlank() }?.let { "¿Cuánto has repostado en $it?" }
+            ?: "¿Cuánto has repostado? Toca para apuntarlo."
+        val notification = NotificationCompat.Builder(this, MicretaApp.CHANNEL_DRIVING)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Apuntar repostaje")
+            .setContentText(text)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        runCatching { NotificationManagerCompat.from(this).notify(REFUEL_NOTIFICATION_ID, notification) }
+    }
+
     override fun onBind(intent: Intent): IBinder? {
         super.onBind(intent)
         return null
@@ -231,7 +282,9 @@ class MicretaForegroundService : LifecycleService() {
         const val EXTRA_OPEN_ROUTE = "com.micreta.app.extra.OPEN_ROUTE"
         const val ROUTE_VOICE = "voice"
         const val ROUTE_STATUS = "status"
+        const val ROUTE_REFUEL = "refuel"
         private const val NOTIFICATION_ID = 1001
+        private const val REFUEL_NOTIFICATION_ID = 1002
         private const val TAG = "MicretaSvc"
 
         private val _isRunning = MutableStateFlow(false)

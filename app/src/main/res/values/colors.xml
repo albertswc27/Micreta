@@ -10,4 +10,5 @@
     <color name="micreta_accent_soft">#7BD0A3</color>
     <color name="micreta_warning">#F0B429</color>
     <color name="micreta_error">#FF5C7A</color>
+    <color name="ic_launcher_bg">#0A0C10</color>
 </resources>

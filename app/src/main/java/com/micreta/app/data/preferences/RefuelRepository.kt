@@ -1,7 +1,9 @@
 package com.micreta.app.data.preferences
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.micreta.app.core.storage.micretaDataStore
 import com.micreta.app.domain.model.RefuelEntry
@@ -34,6 +36,39 @@ class RefuelRepository(private val context: Context) {
             current.removeAll { it.id == id }
             prefs[key] = encode(current)
         }
+    }
+
+    // --- Refuel-on-arrival: pending prompt -------------------------------
+    // Set when a trip ends at a fuel station; consumed on the next car start
+    // to ask the user how much they refueled.
+
+    private object Pending {
+        val flag = booleanPreferencesKey("refuel_pending")
+        val at = longPreferencesKey("refuel_pending_at")
+        val station = stringPreferencesKey("refuel_pending_station")
+    }
+
+    suspend fun setPending(stationName: String?) {
+        context.micretaDataStore.edit { p ->
+            p[Pending.flag] = true
+            p[Pending.at] = System.currentTimeMillis()
+            if (stationName.isNullOrBlank()) p.remove(Pending.station) else p[Pending.station] = stationName
+        }
+    }
+
+    /** Reads and clears the pending refuel. Returns it only if set and recent. */
+    suspend fun takePending(maxAgeMs: Long = 12 * 3_600_000L): PendingRefuel? {
+        var result: PendingRefuel? = null
+        context.micretaDataStore.edit { p ->
+            if (p[Pending.flag] == true) {
+                val at = p[Pending.at] ?: 0L
+                if (System.currentTimeMillis() - at <= maxAgeMs) {
+                    result = PendingRefuel(stationName = p[Pending.station], atMs = at)
+                }
+                p.remove(Pending.flag); p.remove(Pending.at); p.remove(Pending.station)
+            }
+        }
+        return result
     }
 
     private fun encode(list: List<RefuelEntry>): String {
@@ -78,3 +113,6 @@ class RefuelRepository(private val context: Context) {
         }
     }
 }
+
+/** A refuel the app detected but hasn't logged yet (asked on next car start). */
+data class PendingRefuel(val stationName: String?, val atMs: Long)

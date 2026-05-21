@@ -298,22 +298,27 @@ class VoiceCommandViewModel : ViewModel() {
             requestPermission(VoicePermissionRequest.LOCATION, command)
             return
         }
-        container.locationService.startUpdates()
-        val loc = container.locationService.lastKnown()
+        tts.speak("Busco gasolineras cerca.")
+        val loc = container.locationService.awaitFix()
         if (loc == null) {
             tts.speak("No tengo tu ubicación todavía. Inténtalo en unos segundos.")
             _uiState.value = VoiceUiState.Failed("Sin ubicación todavía.")
             return
         }
-        tts.speak("Busco gasolineras cerca.")
         when (val result = container.gasStations.search(loc)) {
             is GasStationResult.Options -> {
-                val n = result.options.size
-                tts.speak("He encontrado $n cerca. Toca una para ir.")
+                val cheapest = result.options.firstOrNull { it.rawPrice != null }
+                val spoken = if (cheapest?.rawPrice != null) {
+                    "La más barata cerca: ${cheapest.brand ?: cheapest.name}, a ${"%.0f".format(cheapest.distanceKm)} kilómetros, " +
+                        "${cheapest.priceLabel}."
+                } else {
+                    "He encontrado ${result.options.size} cerca. Toca una para ir."
+                }
+                tts.speak(spoken)
                 _uiState.value = VoiceUiState.GasStations(result.options, fallbackQuery = null)
             }
             is GasStationResult.FallbackSearch -> {
-                tts.speak("No tengo precios todavía. Puedo abrir Waze buscando gasolineras cercanas.")
+                tts.speak("No tengo precios ahora mismo. Puedo abrir Waze buscando gasolineras cercanas.")
                 _uiState.value = VoiceUiState.GasStations(emptyList(), fallbackQuery = result.query)
             }
         }

@@ -15,7 +15,9 @@ data class GasStationOption(
     val distanceKm: Double,
     val priceLabel: String? = null,
     val brand: String? = null,
-    val updatedAt: Long? = null
+    val updatedAt: Long? = null,
+    /** Numeric €/L for sorting; null when the source has no price. */
+    val rawPrice: Double? = null
 )
 
 /** Outcome of a gas-station search. */

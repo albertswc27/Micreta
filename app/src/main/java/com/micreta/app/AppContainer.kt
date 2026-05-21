@@ -66,7 +66,7 @@ class AppContainer(context: Context) {
     val gpsSpeedActivation by lazy { GpsSpeedActivationWatcher(locationService) }
     val weatherClient by lazy { WeatherClient() }
     val calendarReader by lazy { CalendarReader(appContext) }
-    val gasStations by lazy { GasStationSearchService() }
+    val gasStations by lazy { GasStationSearchService(appContext) }
 
     // Bluetooth / OBD
     val bluetoothScanner by lazy { BluetoothScanner(appContext) }

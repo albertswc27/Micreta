@@ -44,6 +44,7 @@ class SpeedLimitWatcher(
     private var scope: CoroutineScope? = null
     private var watchJob: Job? = null
     private var lastWarnMs: Long = 0L
+    private var wasOver: Boolean = false
 
     fun start() {
         if (watchJob != null) return
@@ -54,16 +55,27 @@ class SpeedLimitWatcher(
                 if (!enabled || p == null) return@collect
                 val limit = speedLimitClient.lookup(p)
                 _limit.value = limit
+                // Only warn on a REAL (OSM) limit — never nag based on a guessed
+                // urban/highway fallback, which caused constant false warnings.
+                if (limit.source != SpeedLimit.Source.OSM_OVERPASS) {
+                    wasOver = false
+                    return@collect
+                }
                 val curr = p.speedKmh ?: 0
                 val limKmh = limit.kmh ?: return@collect
-                val excess = curr - limKmh
-                if (excess >= toleranceKmh) {
+                val over = (curr - limKmh) >= toleranceKmh
+                if (over) {
                     val now = System.currentTimeMillis()
-                    if (now - lastWarnMs > 5_000L) {
+                    // Warn once on crossing, then at most every REWARN_MS while
+                    // still over. Re-arms when the user drops below the limit.
+                    if (!wasOver || now - lastWarnMs > REWARN_MS) {
+                        wasOver = true
                         lastWarnMs = now
                         _events.tryEmit(OverSpeedEvent(curr, limKmh))
-                        EventLogger.info(TAG, "Over-speed event $curr / $limKmh")
+                        EventLogger.info(TAG, "Over-speed $curr/$limKmh (src=${limit.source})")
                     }
+                } else if (curr <= limKmh) {
+                    wasOver = false
                 }
             }
         }
@@ -78,5 +90,7 @@ class SpeedLimitWatcher(
 
     companion object {
         private const val TAG = "SpeedWatch"
+        /** Minimum gap between repeated warnings while still over the limit. */
+        private const val REWARN_MS = 45_000L
     }
 }
