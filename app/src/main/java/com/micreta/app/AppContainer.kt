@@ -68,6 +68,8 @@ class AppContainer(context: Context) {
     val motionSensor by lazy { MotionSensor(appContext) }
     val speedLimitClient by lazy { SpeedLimitClient() }
     val speedLimitWatcher by lazy { SpeedLimitWatcher(locationService, speedLimitClient) }
+    val radarClient by lazy { com.micreta.app.core.traffic.RadarClient() }
+    val radarWatcher by lazy { com.micreta.app.core.safety.RadarWatcher(locationService, radarClient) }
     val gpsSpeedActivation by lazy { GpsSpeedActivationWatcher(locationService) }
     val weatherClient by lazy { WeatherClient() }
     val calendarReader by lazy { CalendarReader(appContext) }

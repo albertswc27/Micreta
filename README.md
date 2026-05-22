@@ -6,7 +6,7 @@ activa cuando detecta que has entrado en el coche (BT del coche, cargador o
 **velocidad GPS sostenida**), te pregunta a dónde vas, abre Waze, controla
 música y lee datos del motor por OBD2 Bluetooth **solo cuando se lo pides**.
 
-La versión actual es **v0.2.8 "Daily driver"** — todo corre localmente, sin backend ni
+La versión actual es **v0.2.13 "Daily driver"** — todo corre localmente, sin backend ni
 nube. Para la integración de [ruvnet/ruflo](https://github.com/ruvnet/ruflo)
 en el workflow de desarrollo ver [`RUFLO_INTEGRATION.md`](RUFLO_INTEGRATION.md).
 
@@ -38,9 +38,9 @@ Leyenda: ✅ funciona · 🧪 experimental · ⏳ pendiente · 🎭 mock/demo.
 | Gasolineras: ubicación real (FusedLocation) + precios Ministerio | ✅ (precios donde la API los da, si no "Precio no disponible") |
 | Recordatorios mantenimiento por km y por fecha (ITV, seguro…) | ✅ |
 | Aviso de conducción > 2 h | ✅ |
-| Wake word "Micra" (Picovoice Porcupine v4, español) | 🧪 integrado; necesita AccessKey de Picovoice. V1 solo con la app en primer plano |
+| Wake word "Micra" (Picovoice Porcupine v4, español) | ✅ funciona; escucha mientras conduces (conectado al coche), incluso en segundo plano |
 | Anuncio de canción al cambiar | ⏳ requiere acceso a notificaciones |
-| Radares DGT | ⏳ pendiente de empaquetar dataset |
+| Radares fijos | ✅ aviso al acercarte, vía OpenStreetMap (`highway=speed_camera`); import oficial DGT pendiente |
 | OBD real (ELM327) | 🎭 mock por defecto; real al configurar adaptador |
 
 ### Cambios de esta versión

@@ -43,6 +43,7 @@ class SettingsRepository(private val context: Context) {
         val customCommandsEnabled = booleanPreferencesKey("custom_commands_enabled")
         val autoListenOnCarBluetooth = booleanPreferencesKey("auto_listen_on_car_bt")
         val wakeWordEnabled = booleanPreferencesKey("wake_word_enabled")
+        val radarWarnEnabled = booleanPreferencesKey("radar_warn_enabled")
     }
 
     val settings: Flow<AppSettings> = context.micretaDataStore.data.map { prefs ->
@@ -72,7 +73,8 @@ class SettingsRepository(private val context: Context) {
             tripsEnabled = prefs[Keys.tripsEnabled] ?: true,
             customCommandsEnabled = prefs[Keys.customCommandsEnabled] ?: true,
             autoListenOnCarBluetooth = prefs[Keys.autoListenOnCarBluetooth] ?: true,
-            wakeWordEnabled = prefs[Keys.wakeWordEnabled] ?: false
+            wakeWordEnabled = prefs[Keys.wakeWordEnabled] ?: false,
+            radarWarnEnabled = prefs[Keys.radarWarnEnabled] ?: true
         )
     }
 
@@ -109,6 +111,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setCustomCommandsEnabled(value: Boolean) = edit { it[Keys.customCommandsEnabled] = value }
     suspend fun setAutoListenOnCarBluetooth(value: Boolean) = edit { it[Keys.autoListenOnCarBluetooth] = value }
     suspend fun setWakeWordEnabled(value: Boolean) = edit { it[Keys.wakeWordEnabled] = value }
+    suspend fun setRadarWarnEnabled(value: Boolean) = edit { it[Keys.radarWarnEnabled] = value }
 
     private suspend inline fun edit(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.micretaDataStore.edit { block(it) }

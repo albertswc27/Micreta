@@ -174,6 +174,9 @@ fun SettingsScreen(
             ToggleRow("Aviso de exceso de velocidad", settings.speedLimitWarnEnabled) {
                 scope.launch { app.container.settingsRepository.setSpeedLimitWarnEnabled(it) }
             }
+            ToggleRow("Avisar de radares fijos (OpenStreetMap)", settings.radarWarnEnabled) {
+                scope.launch { app.container.settingsRepository.setRadarWarnEnabled(it) }
+            }
             ToggleRow("No molestar estricto durante conducción", settings.strictDoNotDisturb) {
                 scope.launch { app.container.settingsRepository.setStrictDoNotDisturb(it) }
             }

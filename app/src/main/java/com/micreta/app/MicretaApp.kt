@@ -52,6 +52,7 @@ class MicretaApp : Application() {
                 container.tts.duckingEnabled = s.audioDuckingEnabled
                 container.speedLimitWatcher.enabled = s.speedLimitWarnEnabled
                 container.speedLimitWatcher.toleranceKmh = s.speedLimitToleranceKmh
+                container.radarWatcher.enabled = s.radarWarnEnabled
                 com.micreta.app.service.MicretaForegroundService.autoListenOnCarBluetoothEnabled =
                     s.autoListenOnCarBluetooth
 

@@ -48,6 +48,7 @@ class MicretaForegroundService : LifecycleService() {
     private var motionEventsJob: Job? = null
     private var longDriveJob: Job? = null
     private var wakeWordJob: Job? = null
+    private var radarEventsJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -105,6 +106,18 @@ class MicretaForegroundService : LifecycleService() {
                 app.container.tripRecorder.registerOverSpeedEvent()
                 val phrase = app.container.personality.overSpeedWarning(ev.currentKmh, ev.limitKmh)
                 app.container.tts.speak(phrase)
+            }
+        }
+
+        // C11 fixed speed-camera (radar) warnings.
+        runCatching { app.container.radarWatcher.start() }
+            .onFailure { EventLogger.warn(TAG, "Radar watcher failed: ${it.message}") }
+        radarEventsJob?.cancel()
+        radarEventsJob = lifecycleScope.launch {
+            app.container.radarWatcher.events.collect { ev ->
+                if (!app.container.settingsRepository.settings.first().radarWarnEnabled) return@collect
+                val rounded = ((ev.distanceM + 25) / 50) * 50 // nearest 50 m
+                app.container.tts.speak("Radar a $rounded metros.")
             }
         }
 
@@ -214,9 +227,12 @@ class MicretaForegroundService : LifecycleService() {
         longDriveJob = null
         wakeWordJob?.cancel()
         wakeWordJob = null
+        radarEventsJob?.cancel()
+        radarEventsJob = null
         runCatching { MicretaApp.get().container.wakeWord.stop() }
         app.container.obd.stop()
         app.container.speedLimitWatcher.stop()
+        app.container.radarWatcher.stop()
         runCatching { app.container.dnd.deactivate() }
         com.micreta.app.core.bluetooth.BluetoothCarStateMachine.exitDrivingMode()
 
@@ -381,6 +397,8 @@ class MicretaForegroundService : LifecycleService() {
         longDriveJob = null
         wakeWordJob?.cancel()
         wakeWordJob = null
+        radarEventsJob?.cancel()
+        radarEventsJob = null
         runCatching { MicretaApp.get().container.wakeWord.stop() }
         _isRunning.value = false
     }

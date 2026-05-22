@@ -27,4 +27,14 @@ data class GeoPoint(
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
         return r * c
     }
+
+    /** Initial bearing (degrees, 0–360) from this point towards [other]. */
+    fun bearingTo(other: GeoPoint): Double {
+        val lat1 = Math.toRadians(lat)
+        val lat2 = Math.toRadians(other.lat)
+        val dLon = Math.toRadians(other.lon - lon)
+        val y = Math.sin(dLon) * Math.cos(lat2)
+        val x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon)
+        return (Math.toDegrees(Math.atan2(y, x)) + 360.0) % 360.0
+    }
 }

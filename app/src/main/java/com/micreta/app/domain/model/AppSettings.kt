@@ -33,5 +33,6 @@ data class AppSettings(
     val tripsEnabled: Boolean = true,                  // E04/E05 master switch
     val customCommandsEnabled: Boolean = true,         // B10
     val autoListenOnCarBluetooth: Boolean = true,      // P2 — offer voice when car BT connects
-    val wakeWordEnabled: Boolean = false               // A06 — off until an engine is available
+    val wakeWordEnabled: Boolean = false,              // A06 — off until an engine is available
+    val radarWarnEnabled: Boolean = true               // C11 — warn near fixed speed cameras
 )
