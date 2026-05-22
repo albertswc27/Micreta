@@ -47,6 +47,7 @@ class MicretaForegroundService : LifecycleService() {
     private var speedLimitEventsJob: Job? = null
     private var motionEventsJob: Job? = null
     private var longDriveJob: Job? = null
+    private var wakeWordJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -172,6 +173,23 @@ class MicretaForegroundService : LifecycleService() {
             }
         }
 
+        // Wake word "Micra": listen continuously while driving (= connected to
+        // the car). Runs in this foreground service (microphone FGS type), and
+        // pauses while the speech recognizer is active so they don't fight for
+        // the mic. On detection it opens the voice screen with auto-listen.
+        wakeWordJob?.cancel()
+        wakeWordJob = lifecycleScope.launch {
+            if (!app.container.wakeWord.available) return@launch
+            kotlinx.coroutines.flow.combine(
+                app.container.settingsRepository.settings,
+                app.container.voice.listening
+            ) { s, listening -> s.wakeWordEnabled && !listening }
+                .collect { shouldListen ->
+                    if (shouldListen) app.container.wakeWord.start { onMicraDetected() }
+                    else app.container.wakeWord.stop()
+                }
+        }
+
         // F08: suggest a break after 2 h of continuous driving, then hourly.
         longDriveJob?.cancel()
         longDriveJob = lifecycleScope.launch {
@@ -194,6 +212,9 @@ class MicretaForegroundService : LifecycleService() {
         motionEventsJob = null
         longDriveJob?.cancel()
         longDriveJob = null
+        wakeWordJob?.cancel()
+        wakeWordJob = null
+        runCatching { MicretaApp.get().container.wakeWord.stop() }
         app.container.obd.stop()
         app.container.speedLimitWatcher.stop()
         runCatching { app.container.dnd.deactivate() }
@@ -304,10 +325,23 @@ class MicretaForegroundService : LifecycleService() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
             else true
+        val hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         if (hasBluetooth) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
         if (hasLocation) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        if (hasMic) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE // wake word
         if (type == 0) type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
         return type
+    }
+
+    /** Wake word "Micra" detected → open the voice screen with auto-listen. */
+    private fun onMicraDetected() {
+        EventLogger.info(TAG, "Wake word 'Micra' detected.")
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra(EXTRA_OPEN_ROUTE, ROUTE_VOICE)
+        }
+        runCatching { startActivity(intent) }
+            .onFailure { EventLogger.warn(TAG, "Could not open voice on wake word: ${it.message}") }
     }
 
     /** A tap-to-log notification asking how much fuel was added (refuel-on-arrival). */
@@ -345,6 +379,9 @@ class MicretaForegroundService : LifecycleService() {
         motionEventsJob = null
         longDriveJob?.cancel()
         longDriveJob = null
+        wakeWordJob?.cancel()
+        wakeWordJob = null
+        runCatching { MicretaApp.get().container.wakeWord.stop() }
         _isRunning.value = false
     }
 

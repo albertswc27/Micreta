@@ -24,6 +24,9 @@ class MediaControllerManager(private val context: Context) {
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     }
 
+    /** True if some app is actively playing on the music stream (no permission needed). */
+    fun isMusicActive(): Boolean = audioManager.isMusicActive
+
     fun play() = sendKey(KeyEvent.KEYCODE_MEDIA_PLAY)
     fun pause() = sendKey(KeyEvent.KEYCODE_MEDIA_PAUSE)
     fun playPause() = sendKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)

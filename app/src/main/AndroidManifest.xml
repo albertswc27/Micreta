@@ -39,6 +39,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Wake word "Micra" listens via the foreground service while driving. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
 
     <!-- Motion (v0.2.0): brusque acceleration detection without OBD -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
@@ -97,7 +99,7 @@
             android:name=".service.MicretaForegroundService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice|location" />
+            android:foregroundServiceType="connectedDevice|location|microphone" />
 
         <receiver
             android:name=".core.bluetooth.BluetoothCarReceiver"

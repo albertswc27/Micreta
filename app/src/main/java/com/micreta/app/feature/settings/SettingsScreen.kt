@@ -110,7 +110,7 @@ fun SettingsScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Activar wake word \"Micra\"", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        if (wakeAvailable) "Di \"Micra\" con la app abierta para activar la voz."
+                        if (wakeAvailable) "Mientras conduces (coche conectado), di \"Micra\" para activar la voz."
                         else "Pendiente de configurar la clave de voz (Picovoice).",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -17,6 +17,7 @@ import com.micreta.app.domain.model.GasStationResult
 import com.micreta.app.domain.model.MicretaState
 import com.micreta.app.domain.model.VoiceCommand
 import com.micreta.app.domain.personality.MicretaPersonalityEngine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -286,15 +287,32 @@ class VoiceCommandViewModel : ViewModel() {
     }
 
     /**
-     * P1 — just resume playback on whatever app holds the media session
-     * (Velune, Spotify, podcasts…). We do NOT launch any app: sending the play
-     * key resumes the user's current player, which is what they want. Works
-     * with no configured music app.
+     * "Pon música":
+     *  - If something is already playing, just resume — don't relaunch the app.
+     *  - If nothing is playing (the music app is closed), launch the configured
+     *    app (e.g. Velune) and start playback after it's ready. This fixes "no
+     *    suena nada porque Velune estaba cerrado".
      */
-    private fun playMusic() {
-        media.play()
-        tts.speak("Poniendo música.")
+    private suspend fun playMusic() {
         container.setState(MicretaState.HAPPY)
+        if (media.isMusicActive()) {
+            media.play()
+            tts.speak("Poniendo música.")
+            _uiState.value = VoiceUiState.Done("Poniendo música.")
+            return
+        }
+        val pkg = container.settingsRepository.settings.first().musicAppPackage
+        if (pkg.isNullOrBlank()) {
+            // No app configured: best-effort play; if silent, tell the user.
+            media.play()
+            tts.speak("Si no suena, elige tu app de música en Ajustes.")
+            _uiState.value = VoiceUiState.Done("Intentando reproducir…")
+            return
+        }
+        media.launchMusicApp(pkg)
+        tts.speak("Abro la música.")
+        delay(2200) // let the app start + register its media session
+        media.play()
         _uiState.value = VoiceUiState.Done("Poniendo música.")
     }
 
