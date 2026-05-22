@@ -98,31 +98,31 @@ fun ParkingScreen() {
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
-            return@Column
+        } else {
+            val df = SimpleDateFormat("d MMM yyyy, HH:mm", Locale("es", "ES"))
+            MicretaCard(title = "Guardado el ${df.format(Date(p.savedAtMs))}") {
+                Text("Latitud: ${"%.5f".format(p.lat)}", style = MaterialTheme.typography.bodyLarge)
+                Text("Longitud: ${"%.5f".format(p.lon)}", style = MaterialTheme.typography.bodyLarge)
+                if (p.addressHint.isNotBlank())
+                    Text(p.addressHint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            PrimaryActionButton(
+                label = "Abrir en mapa",
+                icon = Icons.Filled.Map,
+                onClick = { ShareIntents.openGeo(ctx, p.lat, p.lon, label = "Mi coche") },
+                modifier = Modifier.fillMaxWidth().height(56.dp)
+            )
+            PrimaryActionButton(
+                label = "Compartir ubicación",
+                icon = Icons.Filled.Share,
+                onClick = {
+                    val link = "https://maps.google.com/?q=${p.lat},${p.lon}"
+                    ShareIntents.shareText(ctx, "He aparcado aquí: $link", subject = "Mi coche")
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                container = MaterialTheme.colorScheme.surfaceVariant,
+                content = MaterialTheme.colorScheme.onSurface
+            )
         }
-        val df = SimpleDateFormat("d MMM yyyy, HH:mm", Locale("es", "ES"))
-        MicretaCard(title = "Guardado el ${df.format(Date(p.savedAtMs))}") {
-            Text("Latitud: ${"%.5f".format(p.lat)}", style = MaterialTheme.typography.bodyLarge)
-            Text("Longitud: ${"%.5f".format(p.lon)}", style = MaterialTheme.typography.bodyLarge)
-            if (p.addressHint.isNotBlank())
-                Text(p.addressHint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        PrimaryActionButton(
-            label = "Abrir en mapa",
-            icon = Icons.Filled.Map,
-            onClick = { ShareIntents.openGeo(ctx, p.lat, p.lon, label = "Mi coche") },
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-        )
-        PrimaryActionButton(
-            label = "Compartir ubicación",
-            icon = Icons.Filled.Share,
-            onClick = {
-                val link = "https://maps.google.com/?q=${p.lat},${p.lon}"
-                ShareIntents.shareText(ctx, "He aparcado aquí: $link", subject = "Mi coche")
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            container = MaterialTheme.colorScheme.surfaceVariant,
-            content = MaterialTheme.colorScheme.onSurface
-        )
     }
 }

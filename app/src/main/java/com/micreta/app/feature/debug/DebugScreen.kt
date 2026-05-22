@@ -65,7 +65,7 @@ fun DebugScreen() {
         crash?.let { text ->
             MicretaCard(title = "Último crash", accent = MaterialTheme.colorScheme.error) {
                 Text(
-                    text = if (text.length > 2500) text.take(2500) + "…" else text,
+                    text = if (text.length > 6000) text.take(6000) + "…" else text,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(8.dp))

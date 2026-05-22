@@ -81,57 +81,54 @@ fun BluetoothSetupScreen() {
     ) {
         Text("Bluetooth", style = MaterialTheme.typography.headlineMedium)
 
-        if (permissionDenied) {
-            MicretaCard(
+        when {
+            permissionDenied -> MicretaCard(
                 title = "Permiso Bluetooth",
                 accent = MaterialTheme.colorScheme.error
             ) { Text("No puedo listar dispositivos emparejados sin permiso Bluetooth.") }
-            return@Column
-        }
 
-        if (!bt.isBluetoothSupported()) {
-            MicretaCard(title = "No disponible") { Text("Este dispositivo no tiene Bluetooth.") }
-            return@Column
-        }
-        if (!bt.isBluetoothEnabled()) {
-            MicretaCard(
+            !bt.isBluetoothSupported() ->
+                MicretaCard(title = "No disponible") { Text("Este dispositivo no tiene Bluetooth.") }
+
+            !bt.isBluetoothEnabled() -> MicretaCard(
                 title = "Bluetooth apagado",
                 accent = MaterialTheme.colorScheme.error
             ) { Text("Activa Bluetooth desde los ajustes del sistema y vuelve aquí.") }
-            return@Column
-        }
 
-        MicretaCard(title = "Mi coche (Micra K13)") {
-            Text(
-                settings.carBluetoothName?.let { "$it · ${settings.carBluetoothMac}" }
-                    ?: "Sin seleccionar",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(Modifier.height(8.dp))
-            DeviceList(devices) { dev ->
-                scope.launch { app.container.settingsRepository.setCarBluetooth(dev.address, dev.name) }
+            else -> {
+                MicretaCard(title = "Mi coche (Micra K13)") {
+                    Text(
+                        settings.carBluetoothName?.let { "$it · ${settings.carBluetoothMac}" }
+                            ?: "Sin seleccionar",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    DeviceList(devices) { dev ->
+                        scope.launch { app.container.settingsRepository.setCarBluetooth(dev.address, dev.name) }
+                    }
+                }
+
+                MicretaCard(title = "Adaptador OBD2") {
+                    Text(
+                        settings.obdBluetoothName?.let { "$it · ${settings.obdBluetoothMac}" }
+                            ?: "Sin seleccionar",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    DeviceList(devices) { dev ->
+                        scope.launch { app.container.settingsRepository.setObdBluetooth(dev.address, dev.name) }
+                    }
+                }
+
+                MicretaCard(title = "Consejo") {
+                    Text(
+                        "Si no ves tu Micra o tu ELM327 aquí, empareja el dispositivo desde " +
+                        "Ajustes → Bluetooth y vuelve a esta pantalla.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        }
-
-        MicretaCard(title = "Adaptador OBD2") {
-            Text(
-                settings.obdBluetoothName?.let { "$it · ${settings.obdBluetoothMac}" }
-                    ?: "Sin seleccionar",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(Modifier.height(8.dp))
-            DeviceList(devices) { dev ->
-                scope.launch { app.container.settingsRepository.setObdBluetooth(dev.address, dev.name) }
-            }
-        }
-
-        MicretaCard(title = "Consejo") {
-            Text(
-                "Si no ves tu Micra o tu ELM327 aquí, empareja el dispositivo desde " +
-                "Ajustes → Bluetooth y vuelve a esta pantalla.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -143,22 +140,22 @@ private fun DeviceList(
 ) {
     if (devices.isEmpty()) {
         Text("Sin dispositivos emparejados.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        return
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        devices.forEach { dev ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onPick(dev) }
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(dev.name ?: "Sin nombre", style = MaterialTheme.typography.titleLarge)
-                    Text(dev.address, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            devices.forEach { dev ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onPick(dev) }
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(dev.name ?: "Sin nombre", style = MaterialTheme.typography.titleLarge)
+                        Text(dev.address, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
