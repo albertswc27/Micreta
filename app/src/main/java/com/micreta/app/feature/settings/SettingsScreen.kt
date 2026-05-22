@@ -207,6 +207,9 @@ fun SettingsScreen(
             ToggleRow("Registrar viajes (GPS + acelerómetro)", settings.tripsEnabled) {
                 scope.launch { app.container.settingsRepository.setTripsEnabled(it) }
             }
+            ToggleRow("Comentar frenazos y acelerones (en pruebas)", settings.motionReactionsEnabled) {
+                scope.launch { app.container.settingsRepository.setMotionReactionsEnabled(it) }
+            }
             ToggleRow("Comandos personalizados", settings.customCommandsEnabled) {
                 scope.launch { app.container.settingsRepository.setCustomCommandsEnabled(it) }
             }

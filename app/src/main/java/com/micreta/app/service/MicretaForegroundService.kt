@@ -125,6 +125,9 @@ class MicretaForegroundService : LifecycleService() {
         motionEventsJob?.cancel()
         motionEventsJob = lifecycleScope.launch {
             app.container.motionSensor.events.collect { ev ->
+                // Spoken harsh-accel/brake reactions are opt-in (too many false
+                // positives). Trip eco-score still counts events silently.
+                if (!app.container.settingsRepository.settings.first().motionReactionsEnabled) return@collect
                 val reaction = if (ev.severity == com.micreta.app.core.sensors.MotionSensor.Severity.EMERGENCY) {
                     com.micreta.app.domain.personality.MicretaPersonalityEngine.Reaction.HARSH_BRAKE
                 } else com.micreta.app.domain.personality.MicretaPersonalityEngine.Reaction.HARSH_ACCEL

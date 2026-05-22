@@ -22,8 +22,8 @@ android {
         applicationId = "com.micreta.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 15
-        versionName = "0.2.13"
+        versionCode = 16
+        versionName = "0.2.14"
 
         vectorDrawables.useSupportLibrary = true
 
