@@ -53,6 +53,7 @@ class PorcupineWakeWordManager(context: Context) : WakeWordManager {
 
     private fun copyAsset(assetPath: String): String {
         val out = File(appContext.filesDir, assetPath.substringAfterLast('/'))
+        if (out.exists() && out.length() > 0L) return out.absolutePath // already extracted
         appContext.assets.open(assetPath).use { input -> out.outputStream().use { input.copyTo(it) } }
         return out.absolutePath
     }

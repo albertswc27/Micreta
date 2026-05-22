@@ -19,6 +19,7 @@ import com.micreta.app.core.logging.EventLogger
 import com.micreta.app.navigation.MicretaNavHost
 import com.micreta.app.service.MicretaForegroundService
 import com.micreta.app.ui.theme.MicretaTheme
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -51,15 +52,21 @@ class MainActivity : ComponentActivity() {
                 val container = MicretaApp.get().container
                 if (!container.wakeWord.available) return@repeatOnLifecycle
                 try {
-                    container.settingsRepository.settings.collect { s ->
-                        if (s.wakeWordEnabled) {
-                            container.wakeWord.start {
-                                runOnUiThread { requestedRoute = MicretaForegroundService.ROUTE_VOICE }
+                    // Listen for "Micra" only when enabled AND we're not already
+                    // running the speech recognizer (avoids fighting for the mic).
+                    combine(
+                        container.settingsRepository.settings,
+                        container.voice.listening
+                    ) { s, listening -> s.wakeWordEnabled && !listening }
+                        .collect { shouldListen ->
+                            if (shouldListen) {
+                                container.wakeWord.start {
+                                    runOnUiThread { requestedRoute = MicretaForegroundService.ROUTE_VOICE }
+                                }
+                            } else {
+                                container.wakeWord.stop()
                             }
-                        } else {
-                            container.wakeWord.stop()
                         }
-                    }
                 } finally {
                     container.wakeWord.stop() // stop when the app leaves the foreground
                 }
