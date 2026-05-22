@@ -12,7 +12,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.micreta.app.core.logging.EventLogger
 import com.micreta.app.navigation.MicretaNavHost
 import com.micreta.app.service.MicretaForegroundService
@@ -38,6 +40,29 @@ class MainActivity : ComponentActivity() {
             MicretaForegroundService.isRunning.collect { running ->
                 if (running) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+
+        // Wake word "Micra" — V1 runs ONLY while the app is in the foreground
+        // (no background mic loop). Requires a Picovoice AccessKey + the setting
+        // enabled; otherwise wakeWord.available is false and this is a no-op.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                val container = MicretaApp.get().container
+                if (!container.wakeWord.available) return@repeatOnLifecycle
+                try {
+                    container.settingsRepository.settings.collect { s ->
+                        if (s.wakeWordEnabled) {
+                            container.wakeWord.start {
+                                runOnUiThread { requestedRoute = MicretaForegroundService.ROUTE_VOICE }
+                            }
+                        } else {
+                            container.wakeWord.stop()
+                        }
+                    }
+                } finally {
+                    container.wakeWord.stop() // stop when the app leaves the foreground
+                }
             }
         }
 

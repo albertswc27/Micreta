@@ -6,7 +6,7 @@ activa cuando detecta que has entrado en el coche (BT del coche, cargador o
 **velocidad GPS sostenida**), te pregunta a dónde vas, abre Waze, controla
 música y lee datos del motor por OBD2 Bluetooth **solo cuando se lo pides**.
 
-La versión actual es **v0.2.7 "Daily driver"** — todo corre localmente, sin backend ni
+La versión actual es **v0.2.8 "Daily driver"** — todo corre localmente, sin backend ni
 nube. Para la integración de [ruvnet/ruflo](https://github.com/ruvnet/ruflo)
 en el workflow de desarrollo ver [`RUFLO_INTEGRATION.md`](RUFLO_INTEGRATION.md).
 
@@ -38,7 +38,7 @@ Leyenda: ✅ funciona · 🧪 experimental · ⏳ pendiente · 🎭 mock/demo.
 | Gasolineras: ubicación real (FusedLocation) + precios Ministerio | ✅ (precios donde la API los da, si no "Precio no disponible") |
 | Recordatorios mantenimiento por km y por fecha (ITV, seguro…) | ✅ |
 | Aviso de conducción > 2 h | ✅ |
-| Wake word "Hola Micreta" | ⏳ scaffold listo, motor pendiente (Picovoice) |
+| Wake word "Micra" (Picovoice Porcupine v4, español) | 🧪 integrado; necesita AccessKey de Picovoice. V1 solo con la app en primer plano |
 | Anuncio de canción al cambiar | ⏳ requiere acceso a notificaciones |
 | Radares DGT | ⏳ pendiente de empaquetar dataset |
 | OBD real (ELM327) | 🎭 mock por defecto; real al configurar adaptador |
@@ -56,10 +56,23 @@ Leyenda: ✅ funciona · 🧪 experimental · ⏳ pendiente · 🎭 mock/demo.
 - **Pantalla Voz**: chips de sugerencias ("Pon música", "Llévame a casa", "Gasolinera cercana", "Diagnóstico").
 
 ### Limitaciones actuales
-- Wake word no funciona aún (sin motor); se activa por botón o por la acción "Hablar" de la notificación.
-- Sin escucha continua en segundo plano (decisión de batería/privacidad).
+- Wake word "Micra": motor integrado (Porcupine v4), pero **necesita una AccessKey de Picovoice**
+  para arrancar. Sin clave, el ajuste queda desactivado. V1 escucha solo con la app en primer plano
+  (sin micrófono en segundo plano, por batería/privacidad); en background se usa la acción "Hablar".
 - Precios de gasolina: solo donde la API del Ministerio los publica; nunca se inventan.
-- Radares y anuncio de canción: pendientes (ver tabla).
+- Radares DGT y anuncio de canción: pendientes (ver tabla).
+
+### Activar el wake word "Micra"
+La clave de Picovoice **nunca se guarda en el repo**. Dos formas:
+
+1. **Para la APK publicada (Releases):** en GitHub → *Settings → Secrets and variables → Actions →
+   New repository secret* → nombre `PICOVOICE_ACCESS_KEY`, valor tu AccessKey. El workflow la inyecta
+   al compilar. Vuelve a publicar (tag `v*`) y la descarga ya traerá el wake word.
+2. **Para compilar en local / Android Studio:** añade a `local.properties`:
+   `picovoice.accessKey=TU_ACCESS_KEY`
+
+Luego, en el móvil: concede permiso de **micrófono** (toca el botón de voz una vez) y en
+**Ajustes** activa *"Activar wake word Micra"*. Con la app abierta, di **"Micra"** para activar la voz.
 
 ## Último añadido en v0.2.6
 

@@ -108,14 +108,13 @@ fun SettingsScreen(
             val wakeAvailable = app.container.wakeWord.available
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Activar \"Hola Micreta\"", style = MaterialTheme.typography.bodyLarge)
-                    if (!wakeAvailable) {
-                        Text(
-                            "Wake word todavía no disponible (pendiente de motor de voz).",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text("Activar wake word \"Micra\"", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (wakeAvailable) "Di \"Micra\" con la app abierta para activar la voz."
+                        else "Pendiente de configurar la clave de voz (Picovoice).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Switch(
                     checked = settings.wakeWordEnabled && wakeAvailable,

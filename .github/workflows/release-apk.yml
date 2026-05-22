@@ -22,6 +22,9 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Inject Picovoice AccessKey (wake word "Micra")
+        run: echo "picovoice.accessKey=${{ secrets.PICOVOICE_ACCESS_KEY }}" >> local.properties
+
       - name: Test and assemble debug APK
         run: ./gradlew test assembleDebug
 

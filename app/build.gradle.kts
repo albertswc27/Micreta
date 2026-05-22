@@ -1,6 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+// Picovoice AccessKey for the "Micra" wake word. Kept out of git — set it in
+// local.properties as: picovoice.accessKey=YOUR_KEY  (empty disables wake word).
+val picovoiceAccessKey: String = run {
+    val props = Properties()
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { props.load(it) }
+    props.getProperty("picovoice.accessKey", "")
 }
 
 android {
@@ -11,10 +22,12 @@ android {
         applicationId = "com.micreta.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.2.7"
+        versionCode = 10
+        versionName = "0.2.8"
 
         vectorDrawables.useSupportLibrary = true
+
+        buildConfigField("String", "PICOVOICE_ACCESS_KEY", "\"$picovoiceAccessKey\"")
     }
 
     buildTypes {
@@ -87,6 +100,10 @@ dependencies {
 
     // Google Play Services — fused location + geofencing
     implementation("com.google.android.gms:play-services-location:21.1.0")
+
+    // Wake word "Micra" (Porcupine v4). Inert until a Picovoice AccessKey is
+    // provided in local.properties.
+    implementation("ai.picovoice:porcupine-android:4.0.0")
 
     // Unit tests
     testImplementation("junit:junit:4.13.2")
