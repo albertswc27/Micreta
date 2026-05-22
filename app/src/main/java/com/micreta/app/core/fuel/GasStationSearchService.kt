@@ -82,10 +82,13 @@ class GasStationSearchService(private val context: Context) {
                     rawPrice = price
                 )
             }
-            // Keep nearby ones, then cheapest first (stations without a price last).
-            all.filter { it.distanceKm <= NEARBY_KM }
+            // Cheapest among the NEARBY ones (Fuel Flash style): only widen the
+            // radius if there's nothing closer, so we never send the user far
+            // for a couple of cents.
+            fun pick(maxKm: Double) = all.filter { it.distanceKm <= maxKm }
                 .sortedWith(compareBy({ it.rawPrice ?: Double.MAX_VALUE }, { it.distanceKm }))
-                .take(max)
+            val ranked = pick(NEAR_KM).ifEmpty { pick(MID_KM) }.ifEmpty { pick(FAR_KM) }
+            ranked.take(max)
         } catch (t: Throwable) {
             EventLogger.warn(TAG, "Ministry parse error: ${t.message}")
             emptyList()
@@ -162,7 +165,10 @@ class GasStationSearchService(private val context: Context) {
     companion object {
         const val PRICE_UNAVAILABLE = "Precio no disponible"
         const val FALLBACK_QUERY = "gasolinera"
-        private const val NEARBY_KM = 15.0
+        // Prefer the cheapest within NEAR_KM; widen only if nothing is closer.
+        private const val NEAR_KM = 5.0
+        private const val MID_KM = 12.0
+        private const val FAR_KM = 30.0
         private const val MINISTRY_BASE =
             "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes"
         private const val TAG = "GasStations"
